@@ -1,0 +1,490 @@
+#!/usr/bin/env python
+#
+# pyboot: automatically load/boot kernel + DTB + initrd
+#
+# Automatically load and boot kernel image (and optionally load DTB
+# and initrd) on <board> using netboot (DHCP + TFTP).  Images are
+# copied to a temporary, TFTP-accessible location (unless already
+# under TFTP root dir) so they can be loaded by <board> via TFTP.
+# 
+# Serial console and hardreset/power-down of <board> is handled
+# through conmux.  Conmux provides the serial console, and also allows
+# special escape that can run arbitrary commands and are useful for
+# hardreset and power-off of target board.
+#
+# Reads config file from /etc/pyboot.conf, $PWD/.pyboot and ~/.pyboot
+#
+# Authors: Olof Johansson <olof@lixom.net>, Kevin Hilman <khilman@kernel.org>
+#
+# This file is licensed under the terms of the GNU General Public
+# License version 2. This program is licensed "as is" without any
+# warranty of any kind, whether express or implied.
+#
+import os, sys, time, stat, re
+import pexpect, getopt, tempfile, shutil, subprocess
+import ConfigParser
+
+def usage():
+    name = os.path.basename(sys.argv[0])
+    print
+    print name, "[options] <board> [<kernel>[:addr]] [<dtb>[:addr]] [<initrd>[:addr]"
+    print "  -h: this help message"
+    print "  -d: enable debug mode"
+    print "  -v: display verbose interaction with target"
+    print "  -i: after kernel boots, enter interactive mode with serial console"
+    print "  -u <addr>: create uImage from zImage with <addr> as load address"
+    print "             (useful when u-boot is missing bootz support)"
+    print "  -c <cmdline>: append on to kernel commandline"
+    print
+
+verbose = False
+interact = False
+convert_uimage = False
+shutdown = False  # shutdown/halt and poweroff board when done
+cmdline_append = ""
+debug = False
+dry_run = False
+prompt = ''
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "c:dhisu:vy")
+
+except getopt.GetoptError as err:
+    print str(err) # will print something like "option -a not recognized"
+    sys.exit(2)
+for o, a in opts:
+    if o == "-c":
+        cmdline_append = a
+    elif o == "-d":
+        debug = True
+    elif o == "-y":
+        dry_run = True
+    elif o == "-h":
+        usage()
+        sys.exit(0)
+    elif o == "-i":
+        interact = True
+    elif o == "-s":
+        shutdown = True
+    elif o == "-u":
+        convert_uimage = True
+        uimage_addr = a
+    elif o == "-v":
+        verbose = True
+    else:
+        assert False, "unhandled option %s" %o
+ 
+if len(args) < 1:
+    usage()
+    sys.exit(1)
+
+board = args[0]
+tftproot = '/tftpboot'
+serverip = None
+loadaddr = None
+dtb = None
+dtb_addr = None
+initrd = None
+initrd_addr = None
+uboot_env = None
+
+config = ConfigParser.ConfigParser()
+config.read(['.pyboot', os.path.expanduser('~/.pyboot'), '/etc/pyboot.conf'])
+
+section = 'DEFAULT'
+if config.has_section(board):
+    section = board
+
+if debug:
+    for item in config.items(section):
+        print item
+
+# Config file options
+if config.has_option(section, 'serverip'):
+    serverip = config.get(section, 'serverip')
+if config.has_option(section, 'tftproot'):
+    tftproot = config.get(section, 'tftproot')
+if config.has_option(section, 'image'):
+    kimage = config.get(section, 'image')
+if config.has_option(section, 'dtb'):
+    dtb = config.get(section, 'dtb')
+if config.has_option(section, 'initrd'):
+    initrd = config.get(section, 'initrd')
+if config.has_option(section, 'uboot_env'):
+    uboot_env = config.get(section, 'uboot_env')
+
+if len(args) > 1:
+    kimage = args[1]
+if len(args) > 2:
+    dtb = args[2]
+if len(args) > 3:
+    initrd = args[3]
+
+def path_addr_split(path):
+    """Split the argument (of the form path[:addr] into (path, addr)"""
+    addr = None
+    if path == '-':
+        return (None, None)
+    if path.find(':') != -1:
+        (path, addr) = path.split(':')
+    if not os.path.exists(path):
+        print "ERROR: file", path, "does not exist."
+        sys.exit(1)
+    return (path, addr)
+
+(kimage, loadaddr) = path_addr_split(kimage)
+if not loadaddr:
+    if config.has_option(section, 'loadaddr'):
+        loadaddr = config.get(section, 'loadaddr')
+    else:
+        loadaddr = '${loadaddr}' # use u-boot env 
+if dtb:
+    (dtb, dtb_addr) = path_addr_split(dtb)
+    if not dtb_addr:
+        if config.has_option(section, 'dtb_addr'):
+            dtb_addr = config.get(section, 'dtb_addr')
+        else:
+            dtb_addr = '${fdtaddr}' # use u-boot env
+if not dtb:
+    dtb_addr = ''
+
+if initrd:
+    (initrd, initrd_addr) = path_addr_split(initrd)
+    if not initrd_addr:
+        if config.has_option(section, 'initrd_addr'):
+            initrd_addr = config.get(section, 'initrd_addr')
+        else:
+            initrd_addr = '${initrdaddr}' # use u-boot env
+if not initrd:
+    initrd_addr = '-'
+
+print "Board:", board
+print "Kernel:", kimage, loadaddr
+if initrd:
+    print "initrd:", initrd, initrd_addr
+if dtb:
+    print "DTB:", dtb, dtb_addr
+
+start = time.time()
+def progress(str):
+    if dry_run:
+        return
+
+    t = time.time() - start
+    min = t / 60
+    sec = t % 60
+    print ('[%02d:%02d] %s' %(min, sec, str))
+
+def create_uimage(zimg, addr):
+    """ Create uImage from zImage with @addr ad load address. """
+    if not os.path.basename(zimg).startswith('z'):
+        raise Exception('ERROR: need a zImage to create a uImage: %s' %zimg)
+
+    uimg = os.path.join(os.path.dirname(zimg), "uImage")
+    cmd = 'mkimage -A arm -O linux -T kernel -C none -a %s -e %s -n "Linux" -d %s %s' %(addr, addr, zimg, uimg)
+    subprocess.call(cmd, shell=True)
+    if not os.path.exists(uimg):
+        raise Exception('Unable to create uImage.')
+    else:
+        progress("Convered zImage to uImage (load address = %s)" %uimage_addr)
+
+    return uimg
+
+def tftp_setup():
+    """ Create temp TFTP location. """
+    global tftpdir, tftprel
+
+    tftptmp = os.path.join(tftproot, 'tmp')
+    if not os.path.exists(tftptmp):
+        os.mkdir(tftptmp)
+    tftpdir = tempfile.mkdtemp(prefix='%s-' %board, dir=tftptmp)
+    os.chmod(tftpdir, stat.S_IRWXU | stat.S_IXGRP | stat.S_IXOTH)
+    tftprel = os.path.relpath(tftpdir, tftproot)
+
+def tftp_relpath(path):
+    """Copy file into tftproot for access via TFTP and return path.
+    If path is already under tftproot, do not copy, just return
+    relative path.
+    """
+    global tftpdir, tftprel
+
+    if path.startswith(tftproot):
+        # already in TFTP root, no need to copy, just drop TFTP root prefix
+        path = path[len(tftproot)+1:]  
+    else:
+        shutil.copy(path, tftpdir)
+        path = os.path.join(tftprel, os.path.basename(path))
+        
+    return path
+
+def tftp_cleanup():
+    global tftpdir
+
+    if tftpdir:
+        shutil.rmtree(tftpdir)
+        tftpdir = None
+
+if convert_uimage:
+    kimage = create_uimage(kimage, uimage_addr)
+
+tftp_setup()
+kimage = tftp_relpath(kimage)
+if dtb:
+    dtb = tftp_relpath(dtb)
+if initrd:
+    initrd = tftp_relpath(initrd)
+
+def do_report(retval=0):
+    if retval:
+        print 'FAIL'
+    else:
+        print 'PASS'
+    sys.exit(retval)
+
+class dummy_expect:
+    """ Dummy expect for debug without using real console. """
+    class dummy_match:
+        def group(self, i):
+            return i
+    def __init__(self):
+        self.match = self.dummy_match()
+    def sendline(self, str):
+        print str
+    def expect(self, exp=None, timeout=0):
+        return 0
+    def before(self):
+        return 'BEFORE'
+        
+def connect_console():
+    """ Spawn and connect to serial console (via conmux). """
+    global c
+
+    if dry_run:
+        c = dummy_expect()
+        return
+
+    c = pexpect.spawn("conmux-console vence/%s" %board, timeout=10)
+    logfile = "%s.log" %board
+    c.logfile = open(logfile, 'w')
+
+    #
+    # For interactive use (in addition to logging, connect stdout to
+    # logfile_read (logfile_read is used so characters are not echo'd
+    # twice)
+    #
+    if verbose:
+        c.logfile_read = sys.stdout 
+    try:
+        c.expect('Connected to')
+    except pexpect.EOF:
+        raise Exception('ERROR: Unable to connect to console.  Giving up.')
+
+    c.sendline('')
+    progress('console: connected.')
+
+def command(str, exp=None, timeout=-1):
+    global prompt
+
+    if debug:
+        progress('cmd: %s' % str)
+    c.sendline(str)
+    c.expect(exp or prompt, timeout=timeout)
+
+def boot_to_uboot():
+    global prompt
+
+    c.sendline('~$hardreset')
+
+    # Break into u-boot
+    c.expect('stop autoboot:')
+    c.sendline('')
+    progress('u-boot: taking control.')
+
+    # Find u-boot prompt
+    c.expect('[a-zA-Z0-9 ]*[>#]')
+    prompt = c.match.group(0)
+
+    command('version')
+
+def init_uboot_env():
+    global prompt
+
+    """ Initialize default u-boot env, including values from config file."""
+
+    # environment values from config file
+    if uboot_env:
+        uboot_vars = uboot_env.split('\n')
+        uboot_vars = filter(None, uboot_vars) # remove empty items, blank lines...
+        for var in uboot_vars:
+            (key, val) = var.split('=', 1)
+            command('setenv %s %s' %(key, val))
+
+    command('if test -n ${initenv}; then run initenv; fi')
+    command('if test -n ${preboot}; then run preboot; fi')
+
+def init_net():
+    global prompt
+
+    command('setenv autoload no; setenv autoboot no')
+    c.sendline("dhcp")
+    i = c.expect(["DHCP client bound",
+                  "Unknown command",
+                  "Retry count exceeded",
+                  pexpect.TIMEOUT],
+                 timeout = 10)
+    if i == 0:
+        progress('u-boot: got DHCP address.')
+    elif i == 1:
+        raise Exception('u-boot: does not support DHCP.  Giving up.')
+    else:
+        raise Exception('u-boot: ERROR: timed-out getting DHCP address.')
+
+    c.expect(prompt)
+    if serverip:
+        c.sendline('setenv serverip %s' %serverip)
+        c.expect(prompt)
+
+    c.sendline("if test -n ${netargs}; then run netargs; fi")
+    c.expect(prompt)
+
+def load_image(file, addr):
+    global prompt
+
+    progress('u-boot: TFTP %s to %s' %(file, addr))
+    c.sendline('tftp %s %s' %(addr, file))
+    c.expect('done')
+    c.expect(prompt)
+
+def boot_kernel():
+    global prompt
+
+    boot_cmd='bootm'
+    if os.path.basename(kimage)[0] == 'z':
+        boot_cmd='bootz'
+
+    if cmdline_append:
+        command('setenv bootargs ${bootargs} %s' %cmdline_append)
+
+    command('printenv bootargs')
+
+    # Boot the kernel
+    c.sendline('%s %s %s %s' %(boot_cmd, loadaddr, initrd_addr, dtb_addr))
+    progress("u-boot: jumping to kernel image")
+
+    # U-boot should tell us quickly that it's starting the kernel
+    i = c.expect(['Starting kernel',
+                  'Unknown command',
+                  'Wrong Image Type for bootm',
+                  pexpect.TIMEOUT],
+                 timeout = 5)
+    if i == 0:
+        # Kernel started normally
+        pass
+    elif i == 1:
+        raise Exception('u-boot: ERROR: does not support command: %s' %boot_cmd)
+    elif i == 2:
+        raise Exception('u-boot: ERROR: missing (or overwritten) uImage header')
+    elif i == 3:
+        raise Exception('u-boot: ERROR: Kernel did not start.')
+
+    progress('u-boot: started kernel.')
+
+    # Should see kernel boot shortly
+    try:
+        c.expect('Booting Linux', timeout = 5)
+    except pexpect.TIMEOUT:
+        raise Exception('kernel: ERROR: did not start booting.')
+
+    progress('kernel: started booting.')
+
+    # Look for end of kernel boot, or various failures
+    pl = ['Freeing unused kernel memory',
+          'Kernel panic',
+          'VFS: Unable to mount root fs',
+          pexpect.TIMEOUT]
+    i = c.expect(pl, timeout=60)
+    if i == 0: 
+        # Kernel booted normally
+        pass
+    else:
+        raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
+
+    progress('kernel: finished booting, starting userspace.')
+
+def root_shell():
+    """ Wait for linux root shell. """
+    global prompt
+
+    # Wait for linux root shell
+    prompt = "# $"
+    try:
+        c.expect(prompt, timeout=60)
+    except pexpect.TIMEOUT:
+        raise Exception('userspace: ERROR: Never found root shell')
+    
+    progress("userspace: at root shell")
+
+def run_tests():
+    global prompt, kernelversion
+
+    command('cat /proc/cmdline')
+    progress('userspace: Kernel command line: %s' %c.before.split('\n')[-2])
+
+    command('uname -r')
+
+    kernelversion = c.before.split('\n')[-2]
+    progress('userspace: found kernel version: %s' % kernelversion)
+
+    command('cat /proc/cpuinfo')
+    for line in c.before.split('\n'):
+        match = re.match('Hardware\s+:\s+(.+)\r', line)
+        if match:
+            progress('userspace: Hardware: %s' %match.group(1))
+
+    command('ip -f inet -o addr')
+    for line in c.before.split('\n'):
+        match = re.match('(\d+):\s+(\w+)\s+(\w+)\s+([0-9.]+)', line)
+        if match:
+            progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
+
+    command('ifconfig -a')
+
+try:
+    connect_console()
+    boot_to_uboot()
+    init_uboot_env()
+    if not dry_run:
+        init_net()
+
+    load_image(kimage, loadaddr)
+    if initrd:
+        load_image(initrd, initrd_addr)
+    else:
+        initrd_addr = '-'  # needed for bootm/bootz if dtb present
+    if dtb:
+        load_image(dtb, dtb_addr)
+
+    boot_kernel()
+    root_shell()
+
+    if not dry_run:
+        run_tests()
+
+    if interact:
+        progress('userspace: going interactive.  Use escape char (^]) to exit.')
+        c.interact()
+
+    if shutdown:
+        progress('userspace: shutting down')
+        c.sendline('halt')
+        time.sleep(1)
+        c.sendline('~$off')
+
+    do_report(0)
+
+except Exception as e:
+    progress('got exception: %s' % e)
+    do_report(-1)
+
+finally:
+    tftp_cleanup()
