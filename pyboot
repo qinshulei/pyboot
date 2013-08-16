@@ -532,4 +532,6 @@ except Exception as e:
 
 finally:
     c.logfile.close()
+    # remove all the \r from the expect log (perl is better for this ;)
+    subprocess.call("perl -pi -e 's/\r//g' %s" %logfile, shell=True)
     tftp_cleanup()
