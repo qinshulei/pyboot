@@ -91,6 +91,7 @@ initrd = None
 initrd_addr = None
 uboot_env = None
 log_prefix = 'boot-%s' %board
+logfile = "%s.log" %log_prefix
 start_time = 0
 boot_time = 0
 
@@ -174,15 +175,20 @@ if not quiet:
         print "DTB:", dtb, dtb_addr
 
 def progress(str):
-    global start_time
+    global start_time, c
+    prefix = ''
 
-    if dry_run or quiet or verbose:
+    if dry_run:
         return
+    if verbose:
+        prefix = '# PYBOOT:'
 
     t = time.time() - start_time
     min = t / 60
     sec = t % 60
-    print ('[%02d:%02d] %s' %(min, sec, str))
+    str = '%s[%02d:%02d] %s' %(prefix, min, sec, str)
+    if not quiet:
+        print str
 
 def create_uimage(zimg, addr):
     """ Create uImage from zImage with @addr ad load address. """
@@ -281,7 +287,6 @@ def connect_console():
         return
 
     c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
-    logfile = "%s.log" %log_prefix
     try:
         c.logfile = open(logfile, 'w')
     except IOError:
@@ -297,7 +302,7 @@ def connect_console():
         c.logfile_read = sys.stdout 
     try:
         c.expect('Connected to')
-    except pexpect.EOF:
+    except pexpect.EOF, pexpect.TIMEOUT:
         raise Exception('ERROR: Unable to connect to console.  Giving up.')
 
     c.sendline('')
@@ -317,12 +322,20 @@ def boot_to_uboot():
     c.sendline('~$hardreset')
 
     # Break into u-boot
-    c.expect('stop autoboot:')
+    try:
+        c.expect('stop autoboot:')
+    except pexpect.TIMEOUT:
+        raise Exception('ERROR: Could not break into autoboot.')
+
     c.sendline('')
     progress('u-boot: taking control.')
 
     # Find u-boot prompt
-    c.expect('[a-zA-Z0-9 ]*[>#]')
+    try:
+        c.expect('[a-zA-Z0-9 ]*[>#]')
+    except pexpect.TIMEOUT:
+        raise Exception('ERROR: Could not break into autoboot.')
+
     prompt = c.match.group(0)
 
     command('version')
@@ -514,7 +527,9 @@ try:
 
 except Exception as e:
     progress('got exception: %s' % e)
-    do_report(-1)
+    c.logfile.write('# PYBOOT: Exception: %s\n' %e)
+    do_report(1)
 
 finally:
+    c.logfile.close()
     tftp_cleanup()
