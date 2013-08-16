@@ -90,6 +90,10 @@ dtb_addr = None
 initrd = None
 initrd_addr = None
 uboot_env = None
+log_prefix = 'boot-%s' %board
+start_time = 0
+boot_time = 0
+
 
 config = ConfigParser.ConfigParser()
 config.read(['.pyboot', os.path.expanduser('~/.pyboot'), '/etc/pyboot.conf'])
@@ -169,12 +173,13 @@ if not quiet:
     if dtb:
         print "DTB:", dtb, dtb_addr
 
-start = time.time()
 def progress(str):
+    global start_time
+
     if dry_run or quiet or verbose:
         return
 
-    t = time.time() - start
+    t = time.time() - start_time
     min = t / 60
     sec = t % 60
     print ('[%02d:%02d] %s' %(min, sec, str))
@@ -239,11 +244,18 @@ if initrd:
     initrd = tftp_relpath(initrd)
 
 def do_report(retval=0):
+    global boot_time, c
+
+    if retval:
+        result = 'FAIL'
+    else:
+        result = 'PASS'
     if not quiet:
-        if retval:
-            print 'FAIL'
-        else:
-            print 'PASS'
+        print "Time: %.2f" %boot_time
+        print "Result: %s" %result
+
+    c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
+    c.logfile.write("# PYBOOT: Result: %s\n" %result)
     sys.exit(retval)
 
 class dummy_expect:
@@ -268,8 +280,8 @@ def connect_console():
         c = dummy_expect()
         return
 
-    c = pexpect.spawn("conmux-console vence/%s" %board, timeout=10)
-    logfile = "boot-%s.log" %board
+    c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
+    logfile = "%s.log" %log_prefix
     try:
         c.logfile = open(logfile, 'w')
     except IOError:
@@ -465,6 +477,8 @@ def run_tests():
     command('ifconfig -a')
 
 try:
+    start_time = time.time()
+
     connect_console()
     boot_to_uboot()
     init_uboot_env()
@@ -495,6 +509,7 @@ try:
         time.sleep(1)
         c.sendline('~$off')
 
+    boot_time = time.time() - start_time
     do_report(0)
 
 except Exception as e:
