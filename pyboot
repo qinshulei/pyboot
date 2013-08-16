@@ -44,10 +44,11 @@ shutdown = False  # shutdown/halt and poweroff board when done
 cmdline_append = ""
 debug = False
 dry_run = False
+quiet = False
 prompt = ''
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "c:dhisu:vy")
+    opts, args = getopt.getopt(sys.argv[1:], "c:dhiqsu:vy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -66,6 +67,8 @@ for o, a in opts:
         interact = True
     elif o == "-s":
         shutdown = True
+    elif o == "-q":
+        quiet = True
     elif o == "-u":
         convert_uimage = True
         uimage_addr = a
@@ -158,16 +161,17 @@ if initrd:
 if not initrd:
     initrd_addr = '-'
 
-print "Board:", board
-print "Kernel:", kimage, loadaddr
-if initrd:
-    print "initrd:", initrd, initrd_addr
-if dtb:
-    print "DTB:", dtb, dtb_addr
+if not quiet:
+    print "Board:", board
+    print "Kernel:", kimage, loadaddr
+    if initrd:
+        print "initrd:", initrd, initrd_addr
+    if dtb:
+        print "DTB:", dtb, dtb_addr
 
 start = time.time()
 def progress(str):
-    if dry_run:
+    if dry_run or quiet or verbose:
         return
 
     t = time.time() - start
@@ -235,10 +239,11 @@ if initrd:
     initrd = tftp_relpath(initrd)
 
 def do_report(retval=0):
-    if retval:
-        print 'FAIL'
-    else:
-        print 'PASS'
+    if not quiet:
+        if retval:
+            print 'FAIL'
+        else:
+            print 'PASS'
     sys.exit(retval)
 
 class dummy_expect:
@@ -257,7 +262,7 @@ class dummy_expect:
         
 def connect_console():
     """ Spawn and connect to serial console (via conmux). """
-    global c
+    global c, verbose
 
     if dry_run:
         c = dummy_expect()
@@ -265,7 +270,11 @@ def connect_console():
 
     c = pexpect.spawn("conmux-console vence/%s" %board, timeout=10)
     logfile = "%s.log" %board
-    c.logfile = open(logfile, 'w')
+    try:
+        c.logfile = open(logfile, 'w')
+    except IOError:
+        print 'WARNING: Unable to open %s.  Enabling verbose mode.' %logfile
+        verbose = True
 
     #
     # For interactive use (in addition to logging, connect stdout to
@@ -417,9 +426,15 @@ def root_shell():
 
     # Wait for linux root shell
     prompt = "# $"
-    try:
-        c.expect(prompt, timeout=60)
-    except pexpect.TIMEOUT:
+    i = c.expect([prompt,
+                  "press Enter to activate",  # busybox
+                  pexpect.TIMEOUT],
+                 timeout=60)
+    if i == 0:
+        pass
+    elif i == 1:
+        command('\n')
+    else:
         raise Exception('userspace: ERROR: Never found root shell')
     
     progress("userspace: at root shell")
