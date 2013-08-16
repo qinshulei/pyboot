@@ -269,7 +269,7 @@ def connect_console():
         return
 
     c = pexpect.spawn("conmux-console vence/%s" %board, timeout=10)
-    logfile = "%s.log" %board
+    logfile = "boot-%s.log" %board
     try:
         c.logfile = open(logfile, 'w')
     except IOError:
