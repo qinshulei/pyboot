@@ -490,6 +490,10 @@ def run_tests():
 
     command('ifconfig -a')
 
+def poweroff():
+    global c
+    c.sendline('~$off')
+    
 try:
     start_time = time.time()
 
@@ -521,13 +525,14 @@ try:
         progress('userspace: shutting down')
         c.sendline('halt')
         time.sleep(1)
-        c.sendline('~$off')
+        poweroff()
 
     boot_time = time.time() - start_time
     do_report(0)
 
 except Exception as e:
     progress('got exception: %s' % e)
+    poweroff()
     if c.logfile:
         c.logfile.write('# PYBOOT: Exception: %s\n' %e)
     do_report(1)
