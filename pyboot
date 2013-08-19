@@ -260,8 +260,9 @@ def do_report(retval=0):
         print "Time: %.2f" %boot_time
         print "Result: %s" %result
 
-    c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
-    c.logfile.write("# PYBOOT: Result: %s\n" %result)
+    if c.logfile:
+        c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
+        c.logfile.write("# PYBOOT: Result: %s\n" %result)
     sys.exit(retval)
 
 class dummy_expect:
@@ -527,11 +528,13 @@ try:
 
 except Exception as e:
     progress('got exception: %s' % e)
-    c.logfile.write('# PYBOOT: Exception: %s\n' %e)
+    if c.logfile:
+        c.logfile.write('# PYBOOT: Exception: %s\n' %e)
     do_report(1)
 
 finally:
-    c.logfile.close()
+    if c.logfile:
+        c.logfile.close()
     # remove all the \r from the expect log (perl is better for this ;)
     subprocess.call("perl -pi -e 's/\r//g' %s" %logfile, shell=True)
     tftp_cleanup()
