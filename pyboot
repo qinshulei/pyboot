@@ -512,14 +512,14 @@ try:
         load_image(dtb, dtb_addr)
 
     boot_kernel()
-    root_shell()
-
-    if not dry_run:
-        run_tests()
 
     if interact:
         progress('userspace: going interactive.  Use escape char (^]) to exit.')
         c.interact()
+
+    root_shell()
+    if not dry_run:
+        run_tests()
 
     if shutdown:
         progress('userspace: shutting down')
