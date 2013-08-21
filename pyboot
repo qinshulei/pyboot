@@ -315,7 +315,10 @@ def command(str, exp=None, timeout=-1):
     if debug:
         progress('cmd: %s' % str)
     c.sendline(str)
-    c.expect(exp or prompt, timeout=timeout)
+    try:
+        c.expect(exp or prompt, timeout=timeout)
+    except pexpect.TIMEOUT:
+        raise Exception('ERROR: Timeout waiting for command: %s.' %str)
 
 def boot_to_uboot():
     global prompt
@@ -387,8 +390,11 @@ def load_image(file, addr):
 
     progress('u-boot: TFTP %s to %s' %(file, addr))
     c.sendline('tftp %s %s' %(addr, file))
-    c.expect('done')
-    c.expect(prompt)
+    try:
+        c.expect('done')
+        c.expect(prompt)
+    except pexpect.TIMEOUT:
+        raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
 
 def boot_kernel():
     global prompt
