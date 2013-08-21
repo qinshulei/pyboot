@@ -181,7 +181,8 @@ def progress(str):
     if dry_run:
         return
     if verbose:
-        prefix = '# PYBOOT:'
+        # target console output is already verbose enough, don't add to it
+        return
 
     t = time.time() - start_time
     min = t / 60
@@ -257,8 +258,8 @@ def do_report(retval=0):
     else:
         result = 'PASS'
     if not quiet:
-        print "Time: %.2f" %boot_time
-        print "Result: %s" %result
+        print "# PYBOOT: Time: %.2f" %boot_time
+        print "# PYBOOT: Result: %s" %result
 
     if c.logfile:
         c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
