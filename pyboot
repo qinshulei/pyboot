@@ -273,6 +273,7 @@ class dummy_expect:
             return i
     def __init__(self):
         self.match = self.dummy_match()
+        self.logfile = None
     def sendline(self, str):
         print str
     def expect(self, exp=None, timeout=0):
