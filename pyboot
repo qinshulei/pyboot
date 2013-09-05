@@ -101,7 +101,7 @@ boot_time = 0
 
 
 config = ConfigParser.ConfigParser()
-config.read(['.pyboot', os.path.expanduser('~/.pyboot'), '/etc/pyboot.conf'])
+config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
 
 section = 'DEFAULT'
 if config.has_section(board):
@@ -505,6 +505,8 @@ def run_tests():
 def poweroff():
     global c
     c.sendline('~$off')
+
+sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
     
 try:
     start_time = time.time()
