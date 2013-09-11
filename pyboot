@@ -124,6 +124,9 @@ if config.has_option(section, 'initrd'):
     initrd = config.get(section, 'initrd')
 if config.has_option(section, 'uboot_env'):
     uboot_env = config.get(section, 'uboot_env')
+if config.has_option(section, 'uimage_addr'):
+    uimage_addr = config.get(section, 'uimage_addr')
+    convert_uimage = True
 
 if len(args) > 1:
     kimage = args[1]
