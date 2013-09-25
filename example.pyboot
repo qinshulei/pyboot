@@ -1,0 +1,176 @@
+# 
+# Example config file.
+# 
+# Will be read from /etc/pyboot, ${HOME}/.pyboot, and ${CWD}/.pyboot
+#
+# Special (optional) u-boot environment variables used by pyboot
+#
+#   initenv: command run early to initialize env (e.g. load uEnv.txt from MMC)
+#   preboot: command run early for pre-init (e.g. usb start, dcache off, ...)
+#   netargs: command run after DHCP.  Useful for using u-boot variables that
+#            are set after DHCP (ipaddr, netmask, gatewayip, rootpath, ...)
+#
+[DEFAULT]
+serverip: 192.168.1.2
+tftproot: /tftpboot
+image: arch/arm/boot/zImage
+
+setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.1.254:none'
+nfsroot='root=/dev/nfs nfsroot=${rootpath}'
+
+dtb_base: arch/arm/boot/dts
+
+mmcpart=/dev/mmcblk0p2
+rootfstype=ext4
+mmcroot=rw root=%(mmcpart)s rootwait rootfstype=%(rootfstype)s
+	
+[4430panda]
+loadaddr: 0x82000000
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap4-panda.dtb
+initrd_addr: 0x81000000
+uboot_env:
+   usbethaddr=2e:40:70:f0:12:06
+   preboot=usb start
+   initrd_high=0xffffffff
+   bootargs=console=${console} earlyprintk %(mmcroot)s
+   netargs=%(setip_cmd)s
+
+[4460panda-es]
+loadaddr: 0x82000000
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap4-panda-es.dtb
+initrd_addr: 0x81000000
+uboot_env:
+	usbethaddr=2e:40:70:f0:12:07
+	preboot=usb start
+	initrd_high=0xffffffff
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+          
+[arndale]
+loadaddr: 0x40800000
+dtb_addr: 0x407c0000
+dtb: %(dtb_base)s/exynos5250-arndale.dtb
+initrd_addr: 0x41000000
+#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+mmcpart: /dev/mmcblk1p3
+uboot_env:
+	bootargs=console=tty0 console=ttySAC2,115200n8 %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[3530beagle]
+loadaddr: 0x80200000
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap3-beagle.dtb
+initrd_addr: 0x81000000
+uboot_env:
+	preboot=usb start  # For USB net dongle
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[3730xm]
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap3-beagle-xm.dtb
+initrd_addr: 0x81000000
+uboot_env:
+	usbethaddr=2a:45:34:6d:b4:5d
+	preboot="dcache off; usb start"  # For USB net
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+
+[3530overo]
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap3-tobi.dtb
+initrd_addr: 0x81000000
+# MMC not working on Overo, needs initramfs
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	ethaddr=fe:06:88:cd:08:6f
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+	
+[3730storm]
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap3-tobi.dtb
+initrd_addr: 0x81000000
+uboot_env:
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[am335xbone]
+loadaddr: 0x80200000
+dtb: %(dtb_base)s/am335x-bone.dtb
+dtb_addr: 0x81f00000
+initrd_addr: 0x81000000
+# MMC not merged, needs initramfs
+#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[am335xboneb]
+loadaddr: 0x80200000
+dtb: %(dtb_base)s/am335x-boneblack.dtb
+dtb_addr: 0x81f00000
+initrd_addr: 0x81000000
+# MMC not merged, needs initramfs
+#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	bootargs=console=${console} earlyprintk %(mmcroot)s
+
+[cubie]
+loadaddr: 0x40008000
+dtb_addr: 0x41000000
+dtb: %(dtb_base)s/sun4i-a10-cubieboard.dtb
+initrd_addr: 0x42000000
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	ethaddr=2e:40:70:f0:12:08
+	console=ttyS0,115200 earlyprintk %(mmcroot)s
+	initrd_high=0xffffffff
+
+[wand-solo]
+loadaddr: 0x10800000
+dtb_addr: 0x11000000
+dtb: %(dtb_base)s/imx6dl-wandboard.dtb
+initrd_addr: 0x11100000
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	bootargs=console=${console},${baudrate} %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[wand-dual]
+loadaddr: 0x10800000
+dtb_addr: 0x11000000
+dtb: %(dtb_base)s/imx6dl-wandboard.dtb
+initrd_addr: 0x11100000
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	bootargs=console=${console},${baudrate} %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[wand-quad]
+loadaddr: 0x10800000
+dtb_addr: 0x11000000
+dtb: %(dtb_base)s/imx6q-wandboard.dtb
+initrd_addr: 0x11100000
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+uboot_env:
+	bootargs=console=${console},${baudrate}
+	netargs=%(setip_cmd)s
+
+[sama5d3x]
+loadaddr: 0x22000000
+dtb_addr: 0x21000000
+dtb: %(dtb_base)s/sama5d35ek.dtb
+initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd_addr: 0x21100000
+uimage_addr: 0x20008000
+
+nand_root: mtdparts=atmel_nand:8M(bootstrap/uboot/kernel)ro,-(rootfs) rw rootfstype=ubifs ubi.mtd=1 root=ubi0:rootfs
+uboot_env:
+	bootargs=console=ttyS0,115200
+	ethaddr=F6:88:82:97:B6:E5
+	netargs=%(setip_cmd)s
