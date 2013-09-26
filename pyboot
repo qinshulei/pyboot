@@ -90,6 +90,7 @@ serverip = None
 loadaddr = None
 dtb = None
 dtb_addr = None
+dtb_append = None
 initrd = None
 initrd_addr = None
 uboot_env = None
@@ -156,7 +157,9 @@ if not loadaddr:
 if dtb:
     (dtb, dtb_addr) = path_addr_split(dtb)
     if not dtb_addr:
-        if config.has_option(section, 'dtb_addr'):
+        if config.has_option(section, 'dtb_append'):
+            dtb_append = True
+        elif config.has_option(section, 'dtb_addr'):
             dtb_addr = config.get(section, 'dtb_addr')
         else:
             dtb_addr = '${fdtaddr}' # use u-boot env
@@ -179,7 +182,11 @@ if not quiet:
     if initrd:
         print "initrd:", initrd, initrd_addr
     if dtb:
-        print "DTB:", dtb, dtb_addr
+        print "DTB:", dtb, 
+        if dtb_append:
+            print "(appending to kernel image)"
+        else:
+            print dtb_addr
 
 def progress(str):
     global start_time, c
@@ -529,6 +536,12 @@ def poweroff():
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
 
+if dtb and dtb_append:
+    fd, kimage_appended = tempfile.mkstemp(prefix="zImage")
+    subprocess.call('cat %s %s > %s' \
+                        %(kimage, dtb, kimage_appended), shell=True)
+    kimage = kimage_appended
+
 if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
 
@@ -551,7 +564,7 @@ try:
         load_image(initrd, initrd_addr)
     else:
         initrd_addr = '-'  # needed for bootm/bootz if dtb present
-    if dtb:
+    if dtb and not dtb_append:
         load_image(dtb, dtb_addr)
 
     boot_kernel()
