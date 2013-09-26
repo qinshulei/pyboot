@@ -405,12 +405,15 @@ def load_image(file, addr):
         c.sendline('tftp %s %s' %(addr, file))
         retries = retries - 1
         i = c.expect(['Bytes transferred', 
+                      'TFTP error',
                       'Retry count exceeded',
                       pexpect.TIMEOUT],
                      timeout=30)
         if (i == 0):
             c.expect(prompt)
             break
+        if (i == 1):
+            raise Exception('ERROR: TFTP error.')
         else:
             if retries:
                 progress('u-boot: timeout loading %s, Trying again.' %file)
