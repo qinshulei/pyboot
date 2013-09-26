@@ -461,7 +461,7 @@ def root_shell():
     i = c.expect([prompt,
                   "press Enter to activate",  # busybox
                   pexpect.TIMEOUT],
-                 timeout=90)
+                 timeout=120)
     if i == 0:
         pass
     elif i == 1:
