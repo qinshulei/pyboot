@@ -362,20 +362,30 @@ def init_uboot_env():
 
 def init_net():
     global prompt
+    retries = 3
 
     command('setenv autoload no; setenv autoboot no')
-    c.sendline("dhcp")
-    i = c.expect(["DHCP client bound",
-                  "Unknown command",
-                  "Retry count exceeded",
-                  pexpect.TIMEOUT],
-                 timeout = 30)
-    if i == 0:
-        progress('u-boot: got DHCP address.')
-    elif i == 1:
-        raise Exception('u-boot: does not support DHCP.  Giving up.')
-    else:
-        raise Exception('u-boot: ERROR: timed-out getting DHCP address.')
+    while retries:
+        c.sendline("dhcp")
+        i = c.expect(["DHCP client bound",
+                      "Unknown command",
+                      "Retry count exceeded",
+                      pexpect.TIMEOUT],
+                     timeout = 30)
+        if i == 0:
+            progress('u-boot: got DHCP address.')
+            break
+        elif i == 1:
+            raise Exception('u-boot: does not support DHCP.  Giving up.')
+        elif i == 2:
+            raise Exception('u-boot: ERROR: DHCP retry count exceeded.')
+        else:
+            retries = retries - 1
+            if retries:
+                progress('u-boot: DHCP timeout. Trying again (retries=%d)' \
+                             %retries)
+            else:
+                raise Exception('u-boot: ERROR: timeout getting DHCP address.')
 
     c.expect(prompt)
     if serverip:
