@@ -397,14 +397,26 @@ def init_net():
 
 def load_image(file, addr):
     global prompt
+    retries = 3
 
     progress('u-boot: TFTP %s to %s' %(file, addr))
-    c.sendline('tftp %s %s' %(addr, file))
-    try:
-        c.expect('done', timeout=30)
-        c.expect(prompt)
-    except pexpect.TIMEOUT:
-        raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
+    while retries:
+        c.sendline('tftp %s %s' %(addr, file))
+        retries = retries - 1
+        i = c.expect(['Bytes transferred', 
+                      'Retry count exceeded',
+                      pexpect.TIMEOUT],
+                     timeout=30)
+        if (i == 0):
+            c.expect(prompt)
+            break
+        else:
+            if retries:
+                progress('u-boot: timeout loading %s, Trying again.' %file)
+                c.send('\003')  # Ctrl-C: abort current tftp
+                c.expect(prompt)
+            else:
+                raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
 
 def boot_kernel():
     global prompt
