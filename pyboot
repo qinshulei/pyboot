@@ -465,7 +465,8 @@ def boot_kernel():
 
 def wait_for_kernel():
     try:
-        c.expect('Booting Linux', timeout = 10)
+        c.expect(['Booting Linux',
+                  'Linux version'], timeout = 10)
     except pexpect.TIMEOUT:
         raise Exception('kernel: ERROR: did not start booting.')
 
@@ -473,6 +474,7 @@ def wait_for_kernel():
 
     # Look for end of kernel boot, or various failures
     pl = ['Freeing unused kernel memory',
+          'Unable to handle kernel (.*)\r\n',
           'Kernel panic',
           'VFS: Unable to mount root fs',
           pexpect.TIMEOUT]
@@ -480,6 +482,9 @@ def wait_for_kernel():
     if i == 0: 
         # Kernel booted normally
         pass
+    elif i == 1:
+        msg = c.match.group(0)
+        raise Exception("kernel: %s" %msg)
     else:
         raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
 
@@ -589,6 +594,8 @@ try:
     do_report(0)
 
 except Exception as e:
+    # ensure we read any remaining input
+    c.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=1)
     progress('got exception: %s' % e)
     poweroff()
     if c.logfile:
