@@ -502,7 +502,6 @@ def root_shell():
     else:
         raise Exception('userspace: ERROR: Never found root shell')
     
-    c.sendline('dmesg -n1') # quiet console output for better prompt detection
     progress("userspace: at root shell")
 
 def run_tests():
