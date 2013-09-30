@@ -495,7 +495,7 @@ def root_shell():
     global prompt
 
     # Wait for linux root shell
-    prompt = "# $"
+    prompt = "# "
     i = c.expect([prompt,
                   "press Enter to activate",  # busybox
                   pexpect.TIMEOUT],
