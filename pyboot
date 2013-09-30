@@ -174,7 +174,7 @@ if initrd:
         else:
             initrd_addr = '${initrdaddr}' # use u-boot env
 if not initrd:
-    initrd_addr = '-'
+    initrd_addr = ''
 
 if not quiet:
     print "Board:", board
@@ -450,7 +450,7 @@ def boot_kernel():
                   'Unknown command',
                   'Wrong Image Type for bootm',
                   pexpect.TIMEOUT],
-                 timeout = 5)
+                 timeout = 10)
     if i == 0:
         # Kernel started normally
         pass
@@ -465,7 +465,7 @@ def boot_kernel():
 
 def wait_for_kernel():
     try:
-        c.expect('Booting Linux', timeout = 5)
+        c.expect('Booting Linux', timeout = 10)
     except pexpect.TIMEOUT:
         raise Exception('kernel: ERROR: did not start booting.')
 
@@ -562,10 +562,10 @@ try:
     load_image(kimage, loadaddr)
     if initrd:
         load_image(initrd, initrd_addr)
-    else:
-        initrd_addr = '-'  # needed for bootm/bootz if dtb present
     if dtb and not dtb_append:
         load_image(dtb, dtb_addr)
+        if not initrd:
+            initrd_addr = '-'  # needed for bootm/bootz if dtb present
 
     boot_kernel()
 
