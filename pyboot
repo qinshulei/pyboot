@@ -546,6 +546,13 @@ def run_test(test, cmd):
                  %(test, retval, pass_fail))
     
 def do_tests():
+    # Board-specific tests
+    for o in config.options(section):
+        if o.startswith('test_'):
+            test = o[5:] # drop 'test_' prefix from test name
+            cmd = config.get(section, o)
+            run_test(test, cmd)
+
     # Tests defined in [test] section
     if not config.has_section('test'):
         return
