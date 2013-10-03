@@ -532,6 +532,32 @@ def userspace_info():
         if match:
             progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
 
+def run_test(test, cmd):
+    progress('test %s: %s' %(test, cmd))
+    command(cmd)
+    command('echo $?')
+    retval = int(c.before.split('\n')[-2])
+    if retval == 0:
+        pass_fail = 'PASS'
+    else:
+        pass_fail = 'FAIL'
+        
+    progress("test %s: returned %d: %s" \
+                 %(test, retval, pass_fail))
+    
+def do_tests():
+    # Tests defined in [test] section
+    if not config.has_section('test'):
+        return
+
+    tests = config.options('test')
+    for test in tests:
+        # ignore options from DEFAULTS section
+        if config.defaults().has_key(test):
+            continue
+        cmd = config.get('test', test)
+        run_test(test, cmd)
+
 def poweroff():
     global c
     c.sendline('~$off')
@@ -582,6 +608,7 @@ try:
     root_shell()
     if not dry_run:
         userspace_info()
+        do_tests()
 
     if shutdown:
         progress('userspace: shutting down')
