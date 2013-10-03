@@ -35,6 +35,7 @@ def usage():
     print "  -u <addr>: create uImage from zImage with <addr> as load address"
     print "             (useful when u-boot is missing bootz support)"
     print "  -c <cmdline>: append on to kernel commandline"
+    print "  -t: run tests defined in config file"
     print
 
 verbose = False
@@ -47,9 +48,10 @@ dry_run = False
 quiet = False
 prompt = ''
 logfile = None
+run_tests = False
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "c:dhil:qsu:vy")
+    opts, args = getopt.getopt(sys.argv[1:], "c:dhil:qstu:vy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -72,6 +74,8 @@ for o, a in opts:
         shutdown = True
     elif o == "-q":
         quiet = True
+    elif o == "-t":
+        run_tests = True
     elif o == "-u":
         convert_uimage = True
         uimage_addr = a
@@ -615,6 +619,8 @@ try:
     root_shell()
     if not dry_run:
         userspace_info()
+
+    if run_tests:
         do_tests()
 
     if shutdown:
