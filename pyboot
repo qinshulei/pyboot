@@ -192,22 +192,25 @@ if not quiet:
         else:
             print dtb_addr
 
-def progress(str):
+def progress(str, log=False):
     global start_time, c
-    prefix = ''
-
     if dry_run:
-        return
-    if verbose:
-        # target console output is already verbose enough, don't add to it
         return
 
     t = time.time() - start_time
     min = t / 60
     sec = t % 60
-    str = '%s[%02d:%02d] %s' %(prefix, min, sec, str)
+    timestamp = '[%02d:%02d]' %(min, sec)
+
+    if log and c.logfile:
+        c.logfile.write("\n# PYBOOT: %s\n" %str)
+
+    if verbose:
+        # target console output is already verbose enough, don't add to it
+        return
+
     if not quiet:
-        print str
+        print '%s %s' %(timestamp, str)
 
 def create_uimage(zimg, addr):
     """ Create uImage from zImage with @addr ad load address. """
@@ -537,7 +540,7 @@ def userspace_info():
             progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
 
 def run_test(test, cmd):
-    progress('test %s: %s' %(test, cmd))
+    progress('test: %s: %s' %(test, cmd), log=True)
     command(cmd)
     command('echo $?')
     retval = int(c.before.split('\n')[-2])
@@ -546,8 +549,7 @@ def run_test(test, cmd):
     else:
         pass_fail = 'FAIL'
         
-    progress("test %s: returned %d: %s" \
-                 %(test, retval, pass_fail))
+    progress("test: %s: returned %d: %s"  %(test, retval, pass_fail), log=True)
     
 def do_tests():
     # Board-specific tests
