@@ -509,7 +509,7 @@ def root_shell():
     
     progress("userspace: at root shell")
 
-def run_tests():
+def userspace_info():
     global prompt, kernelversion
 
     command('cat /proc/cmdline')
@@ -531,8 +531,6 @@ def run_tests():
         match = re.match('(\d+):\s+(\w+)\s+(\w+)\s+([0-9.]+)', line)
         if match:
             progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
-
-    command('ifconfig -a')
 
 def poweroff():
     global c
@@ -583,7 +581,7 @@ try:
 
     root_shell()
     if not dry_run:
-        run_tests()
+        userspace_info()
 
     if shutdown:
         progress('userspace: shutting down')
