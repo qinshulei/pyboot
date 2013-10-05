@@ -163,6 +163,7 @@ if dtb:
     if not dtb_addr:
         if config.has_option(section, 'dtb_append'):
             dtb_append = True
+            dtb_addr = ''
         elif config.has_option(section, 'dtb_addr'):
             dtb_addr = config.get(section, 'dtb_addr')
         else:
@@ -351,12 +352,13 @@ def boot_to_uboot():
 
     # Find u-boot prompt
     try:
-        c.expect('[a-zA-Z0-9 ]*[>#]')
+        c.expect('[a-zA-Z0-9 ]*[>#\$]')
     except pexpect.TIMEOUT:
         raise Exception('ERROR: Could not break into autoboot.')
 
     prompt = c.match.group(0)
-
+    if prompt.endswith('$'):
+        prompt = prompt[:-1] + "\$"
     command('version')
 
 def init_uboot_env():
@@ -540,8 +542,10 @@ def userspace_info():
             progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
 
 def run_test(test, cmd):
+    timeout = 120
+
     progress('test: %s: %s' %(test, cmd), log=True)
-    command(cmd)
+    command(cmd, timeout=timeout)
     command('echo $?')
     retval = int(c.before.split('\n')[-2])
     if retval == 0:
