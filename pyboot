@@ -507,12 +507,15 @@ def root_shell():
     prompt = "# "
     i = c.expect([prompt,
                   "press Enter to activate",  # busybox
+                  "Kernel panic",
                   pexpect.TIMEOUT],
                  timeout=120)
     if i == 0:
         pass
     elif i == 1:
         command('\n')
+    elif i == 2:
+        raise Exception('Kernel panic')
     else:
         raise Exception('userspace: ERROR: Never found root shell')
     
