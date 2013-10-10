@@ -545,7 +545,7 @@ def userspace_info():
             progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
 
 def run_test(test, cmd):
-    timeout = 120
+    timeout = 1200
 
     progress('test: %s: %s' %(test, cmd), log=True)
     command(cmd, timeout=timeout)
