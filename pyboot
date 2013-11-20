@@ -347,18 +347,20 @@ def boot_to_uboot():
     except pexpect.TIMEOUT:
         raise Exception('ERROR: Could not break into autoboot.')
 
-    c.sendline('')
+    c.sendline('\r')
     progress('u-boot: taking control.')
 
     # Find u-boot prompt
     try:
-        c.expect('[a-zA-Z0-9 ]*[>#\$]')
+        c.expect('[-\w ]*[>#\$]')
     except pexpect.TIMEOUT:
         raise Exception('ERROR: Could not break into autoboot.')
 
     prompt = c.match.group(0)
     if prompt.endswith('$'):
         prompt = prompt[:-1] + "\$"
+
+    c.expect(prompt)
     command('version')
 
 def init_uboot_env():
