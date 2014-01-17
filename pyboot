@@ -418,6 +418,9 @@ def load_image(file, addr):
     global prompt
     retries = 3
 
+    if serverip:
+        file = "%s:%s" %(serverip, file)
+
     progress('u-boot: TFTP %s to %s' %(file, addr))
     while retries:
         c.sendline('tftp %s %s' %(addr, file))
