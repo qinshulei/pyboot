@@ -345,10 +345,14 @@ def boot_to_uboot():
 
         # Break into u-boot
         i = c.expect(['stop autoboot:',
+                      'HELLO! BOOT0 is starting',
                       pexpect.TIMEOUT])
         if i == 0:
             breakin = True
         elif i == 1:
+            progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
+            continue
+        elif i == 2:
             raise Exception('ERROR: Could not break into autoboot.')
 
     c.sendline('\r')
