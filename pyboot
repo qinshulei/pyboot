@@ -338,14 +338,18 @@ def command(str, exp=None, timeout=-1):
 
 def boot_to_uboot():
     global prompt
+    
+    breakin = False
+    while not breakin:
+        c.sendline('~$hardreset')
 
-    c.sendline('~$hardreset')
-
-    # Break into u-boot
-    try:
-        c.expect('stop autoboot:')
-    except pexpect.TIMEOUT:
-        raise Exception('ERROR: Could not break into autoboot.')
+        # Break into u-boot
+        i = c.expect(['stop autoboot:',
+                      pexpect.TIMEOUT])
+        if i == 0:
+            breakin = True
+        elif i == 1:
+            raise Exception('ERROR: Could not break into autoboot.')
 
     c.sendline('\r')
     progress('u-boot: taking control.')
