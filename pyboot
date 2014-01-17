@@ -219,7 +219,7 @@ def create_uimage(zimg, addr):
         raise Exception('ERROR: need a zImage to create a uImage: %s' %zimg)
 
     fd, uimg = tempfile.mkstemp(suffix="-uImage")
-    cmd = 'mkimage -A arm -O linux -T kernel -C none -a %s -e %s -n "Linux" -d %s %s' %(addr, addr, zimg, uimg)
+    cmd = 'mkimage -A arm -O linux -T kernel -C none -a %s -e %s -n "Linux" -d %s %s > /dev/null' %(addr, addr, zimg, uimg)
     subprocess.call(cmd, shell=True)
     os.chmod(uimg, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     if not os.path.exists(uimg):
