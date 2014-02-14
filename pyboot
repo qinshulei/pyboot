@@ -599,9 +599,10 @@ sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
 
 if dtb and dtb_append:
-    fd, kimage_appended = tempfile.mkstemp(prefix="zImage")
+    fd, kimage_appended = tempfile.mkstemp(prefix="zImage-dtb-")
     subprocess.call('cat %s %s > %s' \
                         %(kimage, dtb, kimage_appended), shell=True)
+    os.chmod(kimage_appended, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     kimage = kimage_appended
 
 if convert_uimage:
