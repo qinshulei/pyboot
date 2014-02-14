@@ -500,7 +500,7 @@ def wait_for_kernel():
           'Kernel panic',
           'VFS: Unable to mount root fs',
           pexpect.TIMEOUT]
-    i = c.expect(pl, timeout=60)
+    i = c.expect(pl, timeout=90)
     if i == 0: 
         # Kernel booted normally
         pass
