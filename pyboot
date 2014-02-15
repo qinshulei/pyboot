@@ -49,6 +49,7 @@ quiet = False
 prompt = ''
 logfile = None
 run_tests = False
+dhcp = True
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "c:dhil:qstu:vy")
@@ -132,6 +133,8 @@ if config.has_option(section, 'uboot_env'):
 if config.has_option(section, 'uimage_addr'):
     uimage_addr = config.get(section, 'uimage_addr')
     convert_uimage = True
+if config.has_option(section, 'dhcp'):
+    dhcp = config.getboolean(section, 'dhcp')
 
 if len(args) > 1:
     kimage = args[1]
@@ -392,7 +395,7 @@ def init_net():
     retries = 3
 
     command('setenv autoload no; setenv autoboot no')
-    while retries:
+    while retries and dhcp:
         c.sendline("dhcp")
         i = c.expect(["DHCP client bound",
                       "Unknown command",
@@ -414,7 +417,8 @@ def init_net():
             else:
                 raise Exception('u-boot: ERROR: timeout getting DHCP address.')
 
-    c.expect(prompt)
+        c.expect(prompt)
+
     if serverip:
         c.sendline('setenv serverip %s' %serverip)
         c.expect(prompt)
