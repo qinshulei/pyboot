@@ -404,7 +404,8 @@ def init_net():
                      timeout = 30)
         if i == 0:
             progress('u-boot: got DHCP address.')
-            break
+            c.expect(prompt)
+            break;
         elif i == 1:
             raise Exception('u-boot: does not support DHCP.  Giving up.')
         elif i == 2:
@@ -416,8 +417,6 @@ def init_net():
                              %retries)
             else:
                 raise Exception('u-boot: ERROR: timeout getting DHCP address.')
-
-        c.expect(prompt)
 
     if serverip:
         c.sendline('setenv serverip %s' %serverip)
