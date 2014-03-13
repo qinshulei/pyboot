@@ -40,6 +40,7 @@ def usage():
 
 verbose = False
 interact = False
+uimage_addr = 0
 convert_uimage = False
 shutdown = False  # shutdown/halt and poweroff board when done
 cmdline_append = ""
@@ -130,7 +131,7 @@ if config.has_option(section, 'initrd'):
     initrd = config.get(section, 'initrd')
 if config.has_option(section, 'uboot_env'):
     uboot_env = config.get(section, 'uboot_env')
-if config.has_option(section, 'uimage_addr'):
+if uimage_addr == 0 and config.has_option(section, 'uimage_addr'):
     uimage_addr = config.get(section, 'uimage_addr')
     convert_uimage = True
 if config.has_option(section, 'dhcp'):
