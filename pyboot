@@ -41,6 +41,7 @@ def usage():
 verbose = False
 interact = False
 uimage_addr = 0
+uimage_addr_default = 0x00008000
 convert_uimage = False
 shutdown = False  # shutdown/halt and poweroff board when done
 cmdline_append = ""
@@ -135,6 +136,8 @@ if config.has_option(section, 'uboot_env'):
 if uimage_addr == 0 and config.has_option(section, 'uimage_addr'):
     uimage_addr = config.get(section, 'uimage_addr')
     convert_uimage = True
+if config.has_option(section, 'uimage_addr_default'):
+    uimage_addr_default = int(config.get(section, 'uimage_addr_default'), 16)
 if config.has_option(section, 'dhcp'):
     dhcp = config.getboolean(section, 'dhcp')
 if config.has_option(section, 'fastboot'):
@@ -220,19 +223,34 @@ def progress(str, log=False):
     if not quiet:
         print '%s %s' %(timestamp, str)
 
-def create_uimage(zimg, addr):
+def create_uimage(zimg, addr_str):
     """ Create uImage from zImage with @addr ad load address. """
     if not os.path.basename(zimg).startswith('z'):
         raise Exception('ERROR: need a zImage to create a uImage: %s' %zimg)
 
+    # Check if 'addr' is hex.  If not, it might be path to System.map,
+    # where look for _text symbol to determine load address
+    try:
+        addr = int(addr_str, 16)
+    except ValueError:
+        if os.path.exists(addr_str):
+            system_map = addr_str
+            virt_text = subprocess.check_output('grep " _text" %s' %system_map, shell=True).split()[0]
+            text_offset = '0x' + virt_text.replace('c', '0')
+            addr = int(text_offset, 16)
+            print "uImage: determined load address (0x%08x) from %s." %(addr, system_map)
+        else:
+            addr = uimage_addr_default
+            print "WARNING: uImage: Unable to determine load address from %s. Using default 0x%08x" %(addr_str, addr)
+
     fd, uimg = tempfile.mkstemp(suffix="-uImage")
-    cmd = 'mkimage -A arm -O linux -T kernel -C none -a %s -e %s -n "Linux" -d %s %s > /dev/null' %(addr, addr, zimg, uimg)
+    cmd = 'mkimage -A arm -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(addr, addr, zimg, uimg)
     subprocess.call(cmd, shell=True)
     os.chmod(uimg, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     if not os.path.exists(uimg):
         raise Exception('Unable to create uImage.')
     else:
-        progress("Convered zImage to uImage (load address = %s)" %uimage_addr)
+        progress("Convered zImage to uImage (load address = 0x%08x)" %addr)
 
     return uimg
 
