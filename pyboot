@@ -270,14 +270,15 @@ def tftp_cleanup():
         shutil.rmtree(tftpdir)
         tftpdir = None
 
-def do_report(retval=0):
+def do_report(retval=0, result=None):
     global start_time, c
 
     boot_time = time.time() - start_time
-    if retval:
-        result = 'FAIL'
-    else:
-        result = 'PASS'
+    if not result:
+        if retval:
+            result = 'FAIL'
+        else:
+            result = 'PASS'
     if not quiet:
         print "# PYBOOT: Time: %.2f" %boot_time
         print "# PYBOOT: Result: %s" %result
@@ -364,7 +365,7 @@ def boot_to_uboot():
             progress('u-boot: fastboot mode detected.')
             return
         else:
-            raise Exception('ERROR: Could not break into u-boot.')
+            raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
     c.sendline('\r')
     progress('u-boot: taking control.')
@@ -373,7 +374,7 @@ def boot_to_uboot():
     try:
         c.expect('[-\w ]*[>#\$]')
     except pexpect.TIMEOUT:
-        raise Exception('ERROR: Could not break into u-boot.')
+        raise Exception('ERROR: Could not find u-boot prompt.', 'OFFLINE')
 
     prompt = c.match.group(0)
     if prompt.endswith('$'):
@@ -684,7 +685,12 @@ except Exception as e:
     poweroff()
     if c.logfile:
         c.logfile.write('# PYBOOT: Exception: %s\n' %e)
-    do_report(1)
+
+    # e.args[0] is message, e.args[1] (if present) is result code
+    if len(e.args) > 1:
+        do_report(1, e.args[1])  # pass result 
+    else:
+        do_report(1)
 
 finally:
     if c.logfile:
