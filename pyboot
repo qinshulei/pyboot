@@ -357,7 +357,7 @@ def boot_to_uboot():
             progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
             continue
         elif i == 2:
-            raise Exception('ERROR: Could not break into autoboot.')
+            raise Exception('ERROR: Could not break into u-boot.')
 
     c.sendline('\r')
     progress('u-boot: taking control.')
@@ -366,7 +366,7 @@ def boot_to_uboot():
     try:
         c.expect('[-\w ]*[>#\$]')
     except pexpect.TIMEOUT:
-        raise Exception('ERROR: Could not break into autoboot.')
+        raise Exception('ERROR: Could not break into u-boot.')
 
     prompt = c.match.group(0)
     if prompt.endswith('$'):
