@@ -106,7 +106,7 @@ if not logfile:
 start_time = 0
 boot_time = 0
 fastboot = False
-
+warnings = 0
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -281,10 +281,14 @@ def do_report(retval=0, result=None):
             result = 'PASS'
     if not quiet:
         print "# PYBOOT: Time: %.2f" %boot_time
+        if warnings:
+            print "# PYBOOT: Warnings: %d" %warnings
         print "# PYBOOT: Result: %s" %result
 
     if c.logfile:
         c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
+        if warnings:
+            c.logfile.write("# PYBOOT: Warnings: %d\n" %warnings)
         c.logfile.write("# PYBOOT: Result: %s\n" %result)
     sys.exit(retval)
 
@@ -506,6 +510,8 @@ def boot_kernel():
     progress('u-boot: started kernel.')
 
 def wait_for_kernel():
+    global warnings
+
     try:
         c.expect(['Booting Linux',
                   'Linux version'], timeout = 30)
@@ -515,20 +521,29 @@ def wait_for_kernel():
     progress('kernel: started booting.')
 
     # Look for end of kernel boot, or various failures
-    pl = ['Freeing unused kernel memory',
-          'Unable to handle kernel (.*)\r\n',
-          'Kernel panic',
-          'VFS: Unable to mount root fs',
-          pexpect.TIMEOUT]
-    i = c.expect(pl, timeout=90)
-    if i == 0: 
-        # Kernel booted normally
-        pass
-    elif i == 1:
-        msg = c.match.group(0)
-        raise Exception("kernel: %s" %msg)
-    else:
-        raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
+    done = False
+    while not done:
+        pl = ['Freeing unused kernel memory',
+              'Unable to handle kernel (.*)\r\n',
+              'Kernel panic',
+              'VFS: Unable to mount root fs',
+              '-+\[ cut here \]-+\s+(.*\s+-+\[ end trace (\w*) \]-+)',
+              pexpect.TIMEOUT]
+        i = c.expect(pl, timeout=90)
+        if i == 0: 
+            # Kernel booted normally
+            done = True
+        elif i == 1:
+            msg = c.match.group(0)
+            raise Exception("kernel: %s" %msg)
+        elif i == 4:
+            warnings += 1
+            progress("kernel: boot warning:")
+            if not quiet:
+                print c.match.group(1)
+            continue
+        else:
+            raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
 
     progress('kernel: finished booting, starting userspace.')
 
