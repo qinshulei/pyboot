@@ -23,6 +23,7 @@
 import os, sys, time, stat, re
 import pexpect, getopt, tempfile, shutil, subprocess
 import ConfigParser
+import json
 
 def usage():
     name = os.path.basename(sys.argv[0])
@@ -108,6 +109,7 @@ start_time = 0
 boot_time = 0
 fastboot = False
 warnings = 0
+boot_meta = {}
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -289,7 +291,7 @@ def tftp_cleanup():
         tftpdir = None
 
 def do_report(retval=0, result=None):
-    global start_time, c
+    global start_time, c, boot_meta
 
     boot_time = time.time() - start_time
     if not result:
@@ -297,6 +299,7 @@ def do_report(retval=0, result=None):
             result = 'FAIL'
         else:
             result = 'PASS'
+    
     if not quiet:
         print "# PYBOOT: Time: %.2f" %boot_time
         if warnings:
@@ -308,6 +311,19 @@ def do_report(retval=0, result=None):
         if warnings:
             c.logfile.write("# PYBOOT: Warnings: %d\n" %warnings)
         c.logfile.write("# PYBOOT: Result: %s\n" %result)
+
+    boot_meta["boot_time"] = round(boot_time, 2)
+    boot_meta["boot_result"] = result
+    boot_meta["boot_warnings"] = warnings
+    boot_meta["boot_log"] = logfile
+
+    # Create JSON format boot metadata
+    json_file, ext = os.path.splitext(logfile)
+    json_file += ".json"
+    boot_json_f = open(json_file, 'w')
+    json.dump(boot_meta, boot_json_f, indent=4, sort_keys=True)
+    boot_json_f.close()
+
     sys.exit(retval)
 
 class dummy_expect:
@@ -666,8 +682,20 @@ if dtb and dtb_append:
     os.chmod(kimage_appended, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     kimage = kimage_appended
 
+boot_meta["kernel_image"] = kimage
+boot_meta["loadaddr"] = loadaddr
+if initrd:
+    boot_meta["initrd_addr"] = initrd_addr
+if dtb:
+    boot_meta["dtb"] = dtb
+    boot_meta["dtb_addr"] = dtb_addr
+    if dtb_append:
+        boot_meta["dtb_append"] = True
+
 if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
+    boot_meta["uImage"] = True
+    boot_meta["uimage_addr"] = uimage_addr
 
 tftp_setup()
 kimage = tftp_relpath(kimage)
