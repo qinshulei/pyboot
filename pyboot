@@ -237,19 +237,26 @@ def create_uimage(zimg, addr_str):
     # where look for _text symbol to determine load address
     try:
         addr = int(addr_str, 16)
+        entry = addr
     except ValueError:
         if os.path.exists(addr_str):
             system_map = addr_str
             virt_text = subprocess.check_output('grep " _text" %s' %system_map, shell=True).split()[0]
             text_offset = '0x' + virt_text.replace('c', '0')
             addr = int(text_offset, 16)
+            entry = addr
             print "uImage: determined load address (0x%08x) from %s." %(addr, system_map)
+        elif addr_str == "xip":
+            addr = int(loadaddr, 16)
+            entry = addr + 64
+            print "uImage: XIP mode: Setting uImage load addr to TFTP load addr 0x%08x (and entry point +64b)" %(addr)
         else:
             addr = uimage_addr_default
+            entry = addr
             print "WARNING: uImage: Unable to determine load address from %s. Using default 0x%08x" %(addr_str, addr)
 
     fd, uimg = tempfile.mkstemp(suffix="-uImage")
-    cmd = 'mkimage -A arm -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(addr, addr, zimg, uimg)
+    cmd = 'mkimage -A arm -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(addr, entry, zimg, uimg)
     subprocess.call(cmd, shell=True)
     os.chmod(uimg, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     if not os.path.exists(uimg):
