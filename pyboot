@@ -53,15 +53,18 @@ prompt = ''
 logfile = None
 run_tests = False
 dhcp = True
+dtb_append = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "c:dhil:qstu:vy")
+    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
     sys.exit(2)
 for o, a in opts:
-    if o == "-c":
+    if o == "-a":
+        dtb_append = True
+    elif o == "-c":
         cmdline_append = a
     elif o == "-d":
         debug = True
@@ -98,7 +101,6 @@ serverip = None
 loadaddr = None
 dtb = None
 dtb_addr = None
-dtb_append = None
 initrd = None
 initrd_addr = None
 uboot_env = None
@@ -202,6 +204,7 @@ if not quiet:
         print "DTB:", dtb, 
         if dtb_append:
             print "(appending to kernel image)"
+            dtb_addr = ""
         else:
             print dtb_addr
 
@@ -688,9 +691,10 @@ if initrd:
     boot_meta["initrd_addr"] = initrd_addr
 if dtb:
     boot_meta["dtb"] = dtb
-    boot_meta["dtb_addr"] = dtb_addr
     if dtb_append:
         boot_meta["dtb_append"] = True
+    else:
+        boot_meta["dtb_addr"] = dtb_addr
 
 if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
