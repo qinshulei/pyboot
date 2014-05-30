@@ -563,6 +563,7 @@ def boot_kernel():
     i = c.expect(['Starting kernel',
                   'Unknown command',
                   'Wrong Image Type for bootm',
+                  'Bad Linux ARM zImage magic',
                   pexpect.TIMEOUT],
                  timeout = 10)
     if i == 0:
@@ -573,6 +574,8 @@ def boot_kernel():
     elif i == 2:
         raise Exception('u-boot: ERROR: missing (or overwritten) uImage header')
     elif i == 3:
+        raise Exception('u-boot: ERROR: Bad Linux ARM zImage magic.' )
+    elif i == 4:
         raise Exception('u-boot: ERROR: Kernel did not start.')
 
     progress('u-boot: started kernel.')
