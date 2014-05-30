@@ -204,9 +204,18 @@ if initrd:
 if not initrd:
     initrd_addr = ''
 
+# Check endianness of zImage
+endian = "little"
+out = subprocess.check_output("file %s" %kimage, shell=True).strip()
+f, magic = out.split(":", 1)
+m = re.search(".*\((\w+)-endian\)", magic)
+if m:
+    endian = m.group(1)
+boot_meta["endian"] = endian
+
 if not quiet:
     print "Board:", board
-    print "Kernel:", kimage, loadaddr
+    print "Kernel:", kimage, loadaddr, "(endian: %s)" %endian
     if initrd:
         print "initrd:", initrd, initrd_addr, initrd_size
     if dtb:
