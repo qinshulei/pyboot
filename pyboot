@@ -20,6 +20,10 @@
 # License version 2. This program is licensed "as is" without any
 # warranty of any kind, whether express or implied.
 #
+# TODO:
+# - generalize bootargs: set by inserting into DTB, not only u-boot env
+#   - needs to handle current post-dhcp init (via netargs)
+#
 import os, sys, time, stat, re
 import pexpect, getopt, tempfile, shutil, subprocess
 import ConfigParser
@@ -54,6 +58,7 @@ logfile = None
 run_tests = False
 dhcp = True
 dtb_append = None
+dtb_modified = None
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vy")
@@ -102,7 +107,9 @@ loadaddr = None
 dtb = None
 dtb_addr = None
 initrd = None
+initrd_size = 0
 initrd_addr = None
+initrd_cmdline = False
 uboot_env = None
 log_prefix = 'boot-%s' %board
 if not logfile:
@@ -187,6 +194,8 @@ if not dtb:
 
 if initrd:
     (initrd, initrd_addr) = path_addr_split(initrd)
+    if initrd:
+        initrd_size = os.path.getsize(initrd)
     if not initrd_addr:
         if config.has_option(section, 'initrd_addr'):
             initrd_addr = config.get(section, 'initrd_addr')
@@ -199,7 +208,7 @@ if not quiet:
     print "Board:", board
     print "Kernel:", kimage, loadaddr
     if initrd:
-        print "initrd:", initrd, initrd_addr
+        print "initrd:", initrd, initrd_addr, initrd_size
     if dtb:
         print "DTB:", dtb, 
         if dtb_append:
@@ -525,7 +534,7 @@ def load_image(file, addr):
                 raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
 
 def boot_kernel():
-    global prompt
+    global prompt, initrd_addr
 
     boot_cmd='bootm'
     if os.path.basename(kimage)[0] == 'z':
@@ -682,8 +691,44 @@ def poweroff():
     global c
     c.sendline('~$off')
 
+def dtb_insert_initrd(dtb, initrd_addr):
+    """ Insert initrd start/end addresses into DTB.
+    
+    NOTE: we could use fdtput for this but the original DTB needs to have
+    enough padding in it for the new commandline, which is not guaranteed.
+    """
+    global initrd_cmdline
+
+    # de-compile DTB into temp DTS
+    fd, tmp_dts = tempfile.mkstemp(suffix=".dts")
+    os.close(fd)
+    cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
+    subprocess.call(cmd, shell=True)
+
+    initrd_start = int(initrd_addr, 16)
+    initrd_end = initrd_start + initrd_size
+    chosen_frag = "/ { chosen { linux,initrd-start = <0x%08x>; linux,initrd-end = <0x%08x>; }; };\n" %(initrd_start, initrd_end)
+    fp = open(tmp_dts, 'a')
+    fp.write(chosen_frag)
+    fp.close()
+    initrd_cmdline = True
+
+    # Re-compile DTS into new DTB
+    fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
+    os.close(fd)
+    cmd = "dtc -I dts -O dtb -o %s %s > /dev/null 2>&1" %(dtb_modified, tmp_dts)
+    subprocess.call(cmd, shell=True)
+    os.unlink(tmp_dts)
+    os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    print "DTB: new/modified DTB: %s" %dtb_modified
+    return dtb_modified
+
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
+
+if dtb and initrd_addr:
+    dtb = dtb_insert_initrd(dtb, initrd_addr)
 
 if dtb and dtb_append:
     fd, kimage_appended = tempfile.mkstemp(prefix="zImage-dtb-")
@@ -729,6 +774,8 @@ try:
         load_image(kimage, loadaddr)
         if initrd:
             load_image(initrd, initrd_addr)
+            if initrd_cmdline:
+                initrd_addr = "-"
         if dtb and not dtb_append:
             load_image(dtb, dtb_addr)
             if not initrd:
@@ -778,3 +825,5 @@ finally:
     # remove all the \r from the expect log (perl is better for this ;)
     subprocess.call("perl -pi -e 's/\r//g' %s" %logfile, shell=True)
     tftp_cleanup()
+    if dtb_modified:
+        os.unlink(dtb_modified)
