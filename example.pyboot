@@ -1,8 +1,4 @@
 # 
-# Example config file.
-# 
-# Will be read from /etc/pyboot, ${HOME}/.pyboot, and ${CWD}/.pyboot
-#
 # Special (optional) u-boot environment variables used by pyboot
 #
 #   initenv: command run early to initialize env (e.g. load uEnv.txt from MMC)
@@ -10,50 +6,66 @@
 #   netargs: command run after DHCP.  Useful for using u-boot variables that
 #            are set after DHCP (ipaddr, netmask, gatewayip, rootpath, ...)
 #
+
 [DEFAULT]
 serverip: 192.168.1.2
 tftproot: /tftpboot
-image: arch/arm/boot/zImage
+basedir: arch/arm/boot
+image: %(basedir)s/zImage
+dtb_base: %(basedir)s/dts
 
-setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.1.254:none'
-nfsroot='root=/dev/nfs nfsroot=${rootpath}'
 
-dtb_base: arch/arm/boot/dts
+eth_dev:
+ip_cmd='ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::%(eth_dev)s:none:192.168.1.254'
+setip_cmd: 'setenv bootargs ${bootargs} %(ip_cmd)s'
+
+#setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.1.254:none'
+#nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=${rootpath}'
+nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
+
+debug=debug initcall_debug
 
 mmcpart=/dev/mmcblk0p2
 rootfstype=ext4
 mmcroot=rw root=%(mmcpart)s rootwait rootfstype=%(rootfstype)s
 	
 [4430panda]
-loadaddr: 0x82000000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap4-panda.dtb
-initrd_addr: 0x81000000
+initrd_addr: 0x82000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
    usbethaddr=2e:40:70:f0:12:06
    preboot=usb start
    initrd_high=0xffffffff
-   bootargs=console=${console} earlyprintk %(mmcroot)s
+   bootargs=console=ttyO2,115200n8 debug earlyprintk
+#   bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
    netargs=%(setip_cmd)s
 
 [4460panda-es]
-loadaddr: 0x82000000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap4-panda-es.dtb
-initrd_addr: 0x81000000
+initrd_addr: 0x82000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	usbethaddr=2e:40:70:f0:12:07
 	preboot=usb start
 	initrd_high=0xffffffff
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO2,115200n8 debug earlyprintk
+#	bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
           
 [arndale]
-loadaddr: 0x40800000
-dtb_addr: 0x407c0000
+#loadaddr: 0x40800000
+#dtb_addr: 0x407c0000
+loadaddr: 0x41000000
+dtb_addr: 0x40f00000
 dtb: %(dtb_base)s/exynos5250-arndale.dtb
-initrd_addr: 0x41000000
-#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+#initrd_addr: 0x41000000
+initrd_addr: 0x42000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 mmcpart: /dev/mmcblk1p3
 uboot_env:
 	bootargs=console=tty0 console=ttySAC2,115200n8 %(mmcroot)s
@@ -63,114 +75,318 @@ uboot_env:
 loadaddr: 0x80200000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-beagle.dtb
-initrd_addr: 0x81000000
+initrd_addr: 0x82000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	preboot=usb start  # For USB net dongle
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO2,115200n8 earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [3730xm]
+loadaddr: 0x80200000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-beagle-xm.dtb
-initrd_addr: 0x81000000
+initrd_addr: 0x82000000
+# 2013/12/20: MMC rootfs started failing (or timing out)
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	usbethaddr=2a:45:34:6d:b4:5d
 	preboot="dcache off; usb start"  # For USB net
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO2,115200n8 earlyprintk
+#	bootargs=console=ttyO2,115200n8 earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 
 [3530overo]
+loadaddr: 0x80200000
 dtb_addr: 0x81f00000
-dtb: %(dtb_base)s/omap3-tobi.dtb
-initrd_addr: 0x81000000
+dtb: %(dtb_base)s/omap3-overo-tobi.dtb
+initrd_addr: 0x82000000
 # MMC not working on Overo, needs initramfs
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	ethaddr=fe:06:88:cd:08:6f
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO2,115200n8 earlyprintk debug
+#	bootargs=console=ttyO2,115200n8 earlyprintk debug %(mmcroot)s
 	netargs=%(setip_cmd)s
 	
 [3730storm]
+loadaddr: 0x80200000
 dtb_addr: 0x81f00000
-dtb: %(dtb_base)s/omap3-tobi.dtb
-initrd_addr: 0x81000000
+dtb: %(dtb_base)s/omap3-overo-storm-tobi.dtb
+initrd_addr: 0x82000000
 uboot_env:
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO2,115200n8 earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [am335xbone]
 loadaddr: 0x80200000
-dtb: %(dtb_base)s/am335x-bone.dtb
 dtb_addr: 0x81f00000
-initrd_addr: 0x81000000
+dtb: %(dtb_base)s/am335x-bone.dtb
+initrd_addr: 0x82000000
 # MMC not merged, needs initramfs
-#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO0,115200n8 earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [am335xboneb]
 loadaddr: 0x80200000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
 dtb_addr: 0x81f00000
-initrd_addr: 0x81000000
+initrd_addr: 0x82000000
 # MMC not merged, needs initramfs
-#initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=${console} earlyprintk %(mmcroot)s
+	bootargs=console=ttyO0,115200n8 earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
 
 [cubie]
-loadaddr: 0x40008000
-dtb_addr: 0x41000000
+#loadaddr: 0x40008000
+#dtb_addr: 0x41000000
+loadaddr: 0x41008000
+dtb_addr: 0x42000000
 dtb: %(dtb_base)s/sun4i-a10-cubieboard.dtb
-initrd_addr: 0x42000000
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd_addr: 0x43000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	ethaddr=2e:40:70:f0:12:08
-	console=ttyS0,115200 earlyprintk %(mmcroot)s
+	bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+	initrd_high=0xffffffff
+
+[cubie2]
+#loadaddr: 0x40008000
+#dtb_addr: 0x41000000
+loadaddr: 0x41000000
+dtb_addr: 0x42000000
+dtb: %(dtb_base)s/sun7i-a20-cubieboard2.dtb
+initrd_addr: 0x43000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	ethaddr=22:71:81:DA:53:EA
+	bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+	fdt_high=0xffffffff
 	initrd_high=0xffffffff
 
 [wand-solo]
-loadaddr: 0x10800000
-dtb_addr: 0x11000000
+loadaddr: 0x11000000
+dtb_addr: 0x12000000
 dtb: %(dtb_base)s/imx6dl-wandboard.dtb
-initrd_addr: 0x11100000
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd_addr: 0x13000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=${console},${baudrate} %(mmcroot)s
+	bootargs=console=ttymxc0,115200 %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [wand-dual]
-loadaddr: 0x10800000
-dtb_addr: 0x11000000
+loadaddr: 0x11000000
+dtb_addr: 0x12000000
 dtb: %(dtb_base)s/imx6dl-wandboard.dtb
-initrd_addr: 0x11100000
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd_addr: 0x13000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=${console},${baudrate} %(mmcroot)s
+	bootargs=console=ttymxc0,115200 %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [wand-quad]
-loadaddr: 0x10800000
-dtb_addr: 0x11000000
+loadaddr: 0x11000000
+dtb_addr: 0x12000000
 dtb: %(dtb_base)s/imx6q-wandboard.dtb
-initrd_addr: 0x11100000
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd_addr: 0x13000000
+initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=${console},${baudrate}
+	bootargs=console=ttymxc0,115200
 	netargs=%(setip_cmd)s
 
-[sama5d3x]
+[sama5]
+uimage_addr: 0x20008000
 loadaddr: 0x22000000
 dtb_addr: 0x21000000
 dtb: %(dtb_base)s/sama5d35ek.dtb
-initrd: %(tftproot)s/buildroot.cpio.gz.uboot
+initrd: %(tftproot)s/buildroot.cpio.gz
 initrd_addr: 0x21100000
-uimage_addr: 0x20008000
-
 nand_root: mtdparts=atmel_nand:8M(bootstrap/uboot/kernel)ro,-(rootfs) rw rootfstype=ubifs ubi.mtd=1 root=ubi0:rootfs
 uboot_env:
 	bootargs=console=ttyS0,115200
 	ethaddr=F6:88:82:97:B6:E5
 	netargs=%(setip_cmd)s
+
+[mirabox]
+uimage_addr: xip
+loadaddr: 0x02000000
+dtb: %(dtb_base)s/armada-370-mirabox.dtb
+dtb_append: True
+initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0x03000000
+uboot_env:
+	bootargs=console=ttyS0,115200 debug earlyprintk
+	initrd_high=0xffffffff
+
+[obsax3]
+uimage_addr: xip
+loadaddr: 0x02000000
+dtb: %(dtb_base)s/armada-xp-openblocks-ax3-4.dtb
+dtb_append: True
+initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0x03000000
+
+[beaver]
+loadaddr: 0x81000000
+dtb_addr: 0x83000000
+dtb: %(dtb_base)s/tegra30-beaver.dtb
+initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0x82000000
+uboot_env:
+	preboot=usb start
+	bootargs=console=ttyS0,115200n8 debug earlyprintk
+	initrd_high=0xffffffff
+	fdt_high=0xffffffff
+
+[osk]
+uimage_addr: 0x10008000
+loadaddr: 0x10408000
+initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0x10800000
+uboot_env:
+	bootargs=mem=32M console=ttyS0,115200n8 debug earlyprintk root=/dev/ram0
+
+[snowball]
+uimage_addr: xip
+loadaddr: 0x00800000
+dtb: %(dtb_base)s/ste-snowball.dtb
+#dtb_addr: 0x01000000
+dtb_append: True
+initrd_addr: 0x01100000
+#initrd: %(tftproot)s/buildroot.cpio.gz
+# internal eMMC 
+mmcpart: /dev/mmcblk0p3  
+# external SD card
+#mmcpart: /dev/mmcblk1p2
+uboot_env:
+	ethaddr=6e:e6:84:36:8e:9e
+	bootargs=console=ttyAMA2,115200n8 debug earlyprintk %(mmcroot)s
+	netargs=%(setip_cmd)s
+
+[odroid-xu]
+#uimage_addr: 0x40008000
+#uimage_addr: hack
+loadaddr: 0x41000000
+dtb: %(dtb_base)s/exynos5410-smdk5410.dtb
+dtb_append: True
+initrd_addr: 0x42000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	preboot=usb start
+	bootargs=console=ttySAC2,115200n8 debug earlyprintk
+
+[octa]
+#loadaddr: 0x20400000
+loadaddr: 0x21000000
+dtb: %(dtb_base)s/exynos5420-arndale-octa.dtb
+#dtb_addr: 0x20f00000
+dtb_addr: 0x23000000
+#initrd_addr: 0x21000000
+initrd_addr: 0x22000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	ethaddr=6e:e6:84:36:8e:9fs
+	initrd_high=0xffffffff
+	fdt_high=0xffffffff
+	bootargs=console=ttySAC3,115200n8 debug earlyprintk clk_ignore_unused
+	netargs=%(setip_cmd)s
+
+[kzm9d]
+uimage_addr: 0x40008000
+#loadaddr: 0x40400000
+loadaddr: 0x40000000
+#dtb_addr: 0x407c0000
+dtb_append: True
+dtb: %(dtb_base)s/emev2-kzm9d.dtb
+initrd_addr: 0x40800000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+   initrd_high=0xffffffff
+   bootargs=console=ttyS1,115200n81 ip=dhcp root=/dev/nfs
+
+[omap5uevm]
+#loadaddr: 0x82000000
+#dtb_addr: 0x80f80000
+loadaddr: 0x81000000
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap5-uevm.dtb
+#initrd_addr: 0x81000000
+initrd_addr: 0x82000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	preboot=usb start
+	fdt_high=0xffffffff
+	initrd_high=0xffffffff
+	bootargs=console=ttyO2,115200n8 debug earlyprintk
+	netargs=%(setip_cmd)s
+
+[dm365evm]
+loadaddr: 0x80800000
+initrd_addr: 0x80c00000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	bootargs=console=ttyS0,115200n8 debug earlyprintk
+	initrd_high=0xffffffff
+#	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
+
+[da850evm]
+loadaddr: 0xc0800000
+dtb: %(dtb_base)s/da850-evm.dtb
+#dtb_addr: 0xc07f0000
+dtb_append: true
+initrd_addr: 0xc0c00000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	bootargs=console=ttyS2,115200n8 debug earlyprintk
+#	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
+
+
+[dragon]
+fastboot: True
+dtb: %(dtb_base)s/qcom-apq8074-dragonboard.dtb 
+initrd: %(tftproot)s/buildroot.cpio.gz
+
+[capri]
+fastboot: True
+dtb: %(dtb_base)s/bcm28155-ap.dtb 
+uboot_env:
+	bootargs="console=ttyS0,115200n8 root=/dev/mmcblk0p8 rootwait rootfstype=ext4 debug earlyprintk"
+
+# By default, capri is using a file-system in MMC, but the below can be used
+# to use an initrd (which first will be flashed to MMC also)
+# NOTE: requires GPT with "initrd" partition
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	initrd_high=0xffffffff
+#	bootargs=console=ttyS0,115200n8 root=/dev/mmcblk0p8 rootwait rootfstype=ext4
+	bootargs="console=ttyS0,115200n8 initrd=0x9d000000,0x100000"
+	bootcmd="mmc read 0x9e000000 0x11a80 0x4000;mmc read 0x90008000 0x1c000 0x8000;mmc read 0x9d000000 0x524000 0x8000; bootz 0x90008000 - 0x9e000000"
+
+[n900]
+fastboot: True
+dtb: %(dtb_base)s/omap3-n900.dtb 
+# default rootfs: MMC
+
+[jetson]
+loadaddr: 0x81000000
+dtb_addr: 0x82000000
+dtb: %(dtb_base)s/tegra124-jetson-tk1.dtb
+#initrd_addr: 0x82100000
+initrd_addr: 0x83000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+uboot_env:
+	preboot=usb start 0
+	bootargs=console=ttyS0,115200n8 debug earlyprintk
+	initrd_high=0xffffffff
+	fdt_high=0xffffffff
+	netargs=%(setip_cmd)s
+		
+[test]
+#init: mount -t proc none /proc; mount -t sysfs none /sys
+

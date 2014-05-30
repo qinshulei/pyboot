@@ -110,6 +110,7 @@ initrd = None
 initrd_size = 0
 initrd_addr = None
 initrd_cmdline = False
+initrd_uboot = None
 uboot_env = None
 log_prefix = 'boot-%s' %board
 if not logfile:
@@ -733,6 +734,23 @@ def dtb_insert_initrd(dtb, initrd_addr):
     print "DTB: new/modified DTB: %s" %dtb_modified
     return dtb_modified
 
+def initrd_add_uboot_header(initrd):
+    """Add u-boot initrd header so it can be booted using u-boot bootm/bootz."""
+    global initrd_uboot
+
+    basename = os.path.basename(initrd)
+    fd, initrd_uboot = tempfile.mkstemp(prefix=basename, suffix=".uboot")
+    os.close(fd)
+    cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot)
+    subprocess.call(cmd, shell=True)
+    if os.path.exists(initrd_uboot):
+        print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot)
+        os.chmod(initrd_uboot, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+        initrd_size = os.path.getsize(initrd_uboot)
+        return initrd_uboot
+    else:
+        raise Exception("Unable to add u-boot header to initrd %s" %initrd)
+
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
 
@@ -761,6 +779,9 @@ if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
     boot_meta["uImage"] = True
     boot_meta["uimage_addr"] = uimage_addr
+
+if initrd and not dtb:
+    initrd = initrd_add_uboot_header(initrd)
 
 tftp_setup()
 kimage = tftp_relpath(kimage)
@@ -836,3 +857,5 @@ finally:
     tftp_cleanup()
     if dtb_modified:
         os.unlink(dtb_modified)
+    if initrd_uboot:
+        os.unlink(initrd_uboot)
