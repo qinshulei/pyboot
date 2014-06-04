@@ -203,8 +203,11 @@ if initrd:
     if not initrd_addr:
         if config.has_option(section, 'initrd_addr'):
             initrd_addr = config.get(section, 'initrd_addr')
-        else:
+        elif not fastboot:
             initrd_addr = '${initrdaddr}' # use u-boot env
+        else:
+            initrd_addr = ""
+
 if not initrd:
     initrd_addr = ''
 
