@@ -505,11 +505,9 @@ def init_net():
                 raise Exception('u-boot: ERROR: timeout getting DHCP address.')
 
     if serverip:
-        c.sendline('setenv serverip %s' %serverip)
-        c.expect(prompt)
+        command('setenv serverip %s' %serverip)
 
-    c.sendline("if test -n ${netargs}; then run netargs; fi")
-    c.expect(prompt)
+    command("if test -n ${netargs}; then run netargs; fi")
 
 def fastboot_image(kernel, dtb, initrd):
     progress('u-boot: entering fastboot mode.')
