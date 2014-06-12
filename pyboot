@@ -114,6 +114,7 @@ initrd_size = 0
 initrd_addr = None
 initrd_cmdline = False
 initrd_uboot = None
+initrd_uboot_tmp = None
 uboot_env = None
 log_prefix = 'boot-%s' %board
 if not logfile:
@@ -200,6 +201,8 @@ if initrd:
     (initrd, initrd_addr) = path_addr_split(initrd)
     if initrd:
         initrd_size = os.path.getsize(initrd)
+        if config.has_option(section, 'initrd_uboot'):
+            initrd_uboot = config.getboolean(section, 'initrd_uboot')
     if not initrd_addr:
         if config.has_option(section, 'initrd_addr'):
             initrd_addr = config.get(section, 'initrd_addr')
@@ -406,12 +409,16 @@ def connect_console():
     c.sendline('')
     progress('console: connected.')
 
+def sendline(str):
+    global c
+    c.sendline(str)
+
 def command(str, exp=None, timeout=-1):
     global prompt
 
     if debug:
         progress('cmd: %s' % str)
-    c.sendline(str)
+    sendline(str)
     try:
         c.expect(exp or prompt, timeout=timeout)
     except pexpect.TIMEOUT:
@@ -482,7 +489,7 @@ def init_net():
 
     command('setenv autoload no; setenv autoboot no')
     while retries and dhcp:
-        c.sendline("dhcp")
+        sendline("dhcp")
         i = c.expect(["DHCP client bound",
                       "Unknown command",
                       "Retry count exceeded",
@@ -527,7 +534,7 @@ def load_image(file, addr):
 
     progress('u-boot: TFTP %s to %s' %(file, addr))
     while retries:
-        c.sendline('tftp %s %s' %(addr, file))
+        sendline('tftp %s %s' %(addr, file))
         retries = retries - 1
         i = c.expect(['Bytes transferred', 
                       'TFTP error',
@@ -560,7 +567,7 @@ def boot_kernel():
     command('printenv bootargs')
 
     # Boot the kernel
-    c.sendline('%s %s %s %s' %(boot_cmd, loadaddr, initrd_addr, dtb_addr))
+    sendline('%s %s %s %s' %(boot_cmd, loadaddr, initrd_addr, dtb_addr))
     progress("u-boot: jumping to kernel image")
 
     # U-boot should tell us quickly that it's starting the kernel
@@ -599,6 +606,7 @@ def wait_for_kernel():
     done = False
     while not done:
         pl = ['Freeing unused kernel memory',
+              'Freeing init memory',
               'Unable to handle kernel (.*)\r\n',
               'Kernel panic',
               'VFS: Unable to mount root fs',
@@ -606,13 +614,13 @@ def wait_for_kernel():
               'Unhandled fault',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
-        if i == 0: 
+        if i == 0 or i == 1:  
             # Kernel booted normally
             done = True
-        elif i == 1:
+        elif i == 2:
             msg = c.match.group(0)
             raise Exception("kernel: %s" %msg)
-        elif i == 4:
+        elif i == 5:
             warnings += 1
             progress("kernel: boot warning:")
             if not quiet:
@@ -743,18 +751,18 @@ def dtb_insert_initrd(dtb, initrd_addr):
 
 def initrd_add_uboot_header(initrd):
     """Add u-boot initrd header so it can be booted using u-boot bootm/bootz."""
-    global initrd_uboot
+    global initrd_uboot_tmp
 
     basename = os.path.basename(initrd)
-    fd, initrd_uboot = tempfile.mkstemp(prefix=basename, suffix=".uboot")
+    fd, initrd_uboot_tmp = tempfile.mkstemp(prefix=basename, suffix=".uboot")
     os.close(fd)
-    cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot)
+    cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
-    if os.path.exists(initrd_uboot):
-        print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot)
-        os.chmod(initrd_uboot, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-        initrd_size = os.path.getsize(initrd_uboot)
-        return initrd_uboot
+    if os.path.exists(initrd_uboot_tmp):
+        print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp)
+        os.chmod(initrd_uboot_tmp, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+        initrd_size = os.path.getsize(initrd_uboot_tmp)
+        return initrd_uboot_tmp
     else:
         raise Exception("Unable to add u-boot header to initrd %s" %initrd)
 
@@ -780,7 +788,7 @@ start_time = time.time()
 if endian == "big":
     kimage = zimage_hack_endian(kimage)
 
-if dtb and initrd_addr:
+if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
 
 if dtb and dtb_append:
@@ -806,7 +814,7 @@ if convert_uimage:
     boot_meta["uImage"] = True
     boot_meta["uimage_addr"] = uimage_addr
 
-if initrd and not dtb:
+if (initrd and not dtb) or initrd_uboot:
     initrd = initrd_add_uboot_header(initrd)
 
 tftp_setup()
@@ -883,5 +891,5 @@ finally:
     tftp_cleanup()
     if dtb_modified:
         os.unlink(dtb_modified)
-    if initrd_uboot:
-        os.unlink(initrd_uboot)
+    if initrd_uboot_tmp:
+        os.unlink(initrd_uboot_tmp)
