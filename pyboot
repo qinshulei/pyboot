@@ -116,6 +116,7 @@ initrd_cmdline = False
 initrd_uboot = None
 initrd_uboot_tmp = None
 uboot_env = None
+uboot_early = None
 log_prefix = 'boot-%s' %board
 if not logfile:
     logfile = "%s.log" %log_prefix
@@ -149,6 +150,8 @@ if config.has_option(section, 'initrd'):
     initrd = config.get(section, 'initrd')
 if config.has_option(section, 'uboot_env'):
     uboot_env = config.get(section, 'uboot_env')
+if config.has_option(section, 'uboot_early'):
+    uboot_early = config.get(section, 'uboot_early')
 if uimage_addr == 0 and config.has_option(section, 'uimage_addr'):
     uimage_addr = config.get(section, 'uimage_addr')
     convert_uimage = True
@@ -464,13 +467,18 @@ def boot_to_uboot():
     if prompt.endswith('$'):
         prompt = prompt[:-1] + "\$"
 
-    c.expect(prompt)
-    command('version')
-
 def init_uboot_env():
+    """ Initialize default u-boot env, including values from config file."""
     global prompt
 
-    """ Initialize default u-boot env, including values from config file."""
+    # Send this command one char at time
+    if uboot_early:
+        for ch in uboot_early:
+            c.send(ch)
+        c.send("\n")
+
+    c.expect(prompt)
+    command('version')
 
     # environment values from config file
     if uboot_env:
