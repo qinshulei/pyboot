@@ -117,6 +117,7 @@ initrd_uboot = None
 initrd_uboot_tmp = None
 uboot_env = None
 uboot_early = None
+post_reset_ctrl = None
 log_prefix = 'boot-%s' %board
 if not logfile:
     logfile = "%s.log" %log_prefix
@@ -161,6 +162,8 @@ if config.has_option(section, 'dhcp'):
     dhcp = config.getboolean(section, 'dhcp')
 if config.has_option(section, 'fastboot'):
     fastboot = config.get(section, 'fastboot')
+if config.has_option(section, 'post_reset_ctrl'):
+    post_reset_ctrl = config.get(section, 'post_reset_ctrl')
 
 if len(args) > 1:
     kimage = args[1]
@@ -428,11 +431,18 @@ def command(str, exp=None, timeout=-1):
         raise Exception('ERROR: Timeout waiting for command: %s.' %str)
 
 def boot_to_uboot():
-    global prompt
+    global prompt, post_reset_ctrl
     
     breakin = False
     while not breakin:
         c.sendline('~$hardreset')
+
+        # Send "post_reset_ctrl" character as a control character right after reset
+        if post_reset_ctrl:
+            time.sleep(4)
+            progress("console: send post_reset_ctrl: %s" %post_reset_ctrl)
+            for ch in post_reset_ctrl:
+                c.sendcontrol(ch)
 
         # Break into u-boot
         i = c.expect(['stop autoboot:',
