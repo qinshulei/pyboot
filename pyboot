@@ -192,8 +192,6 @@ def path_addr_split(path):
 if not loadaddr:
     if config.has_option(section, 'loadaddr'):
         loadaddr = config.get(section, 'loadaddr')
-    else:
-        loadaddr = '${loadaddr}' # use u-boot env 
 
 boot_meta["kernel_image"] = kimage
 boot_meta["loadaddr"] = loadaddr
@@ -206,8 +204,6 @@ if dtb:
             dtb_addr = ''
         elif config.has_option(section, 'dtb_addr'):
             dtb_addr = config.get(section, 'dtb_addr')
-        else:
-            dtb_addr = '${fdtaddr}' # use u-boot env
 
     boot_meta["dtb"] = dtb
     boot_meta["dtb_addr"] = dtb_addr
@@ -225,8 +221,6 @@ if initrd:
     if not initrd_addr:
         if config.has_option(section, 'initrd_addr'):
             initrd_addr = config.get(section, 'initrd_addr')
-        elif not fastboot:
-            initrd_addr = '${initrdaddr}' # use u-boot env
         else:
             initrd_addr = ""
 
@@ -244,6 +238,7 @@ m = re.search(".*\((\w+)-endian\)", magic)
 if m:
     endian = m.group(1)
 boot_meta["endian"] = endian
+boot_meta["fastboot"] = fastboot
 
 if not quiet:
     print "Board:", board
