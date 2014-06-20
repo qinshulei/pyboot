@@ -62,7 +62,7 @@ exp_logfile = None
 run_tests = False
 check_warnings = False
 dhcp = True
-dtb_append = None
+dtb_append = False
 
 temp_files = []
 
@@ -194,6 +194,10 @@ if not loadaddr:
         loadaddr = config.get(section, 'loadaddr')
     else:
         loadaddr = '${loadaddr}' # use u-boot env 
+
+boot_meta["kernel_image"] = kimage
+boot_meta["loadaddr"] = loadaddr
+    
 if dtb:
     (dtb, dtb_addr) = path_addr_split(dtb)
     if not dtb_addr:
@@ -204,6 +208,11 @@ if dtb:
             dtb_addr = config.get(section, 'dtb_addr')
         else:
             dtb_addr = '${fdtaddr}' # use u-boot env
+
+    boot_meta["dtb"] = dtb
+    boot_meta["dtb_addr"] = dtb_addr
+    boot_meta["dtb_append"] = dtb_append
+
 if not dtb:
     dtb_addr = ''
 
@@ -220,6 +229,9 @@ if initrd:
             initrd_addr = '${initrdaddr}' # use u-boot env
         else:
             initrd_addr = ""
+
+    boot_meta["initrd"] = initrd
+    boot_meta["initrd_addr"] = initrd_addr
 
 if not initrd:
     initrd_addr = ''
@@ -830,16 +842,6 @@ if dtb and dtb_append:
     os.chmod(kimage_appended, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     kimage = kimage_appended
 
-boot_meta["kernel_image"] = kimage
-boot_meta["loadaddr"] = loadaddr
-if initrd:
-    boot_meta["initrd_addr"] = initrd_addr
-if dtb:
-    boot_meta["dtb"] = dtb
-    if dtb_append:
-        boot_meta["dtb_append"] = True
-    else:
-        boot_meta["dtb_addr"] = dtb_addr
 
 if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
