@@ -63,7 +63,6 @@ run_tests = False
 check_warnings = False
 dhcp = True
 dtb_append = None
-dtb_modified = None
 
 temp_files = []
 
@@ -120,7 +119,6 @@ initrd_size = 0
 initrd_addr = None
 initrd_cmdline = False
 initrd_uboot = None
-initrd_uboot_tmp = None
 uboot_env = None
 uboot_early = None
 post_reset_ctrl = None
@@ -295,7 +293,8 @@ def create_uimage(zimg, addr_str):
             entry = addr
             print "WARNING: uImage: Unable to determine load address from %s. Using default 0x%08x" %(addr_str, addr)
 
-    fd, uimg = tempfile.mkstemp(suffix="-uImage")
+    fd, uimg = tempfile.mkstemp(prefix="uImage-")
+    temp_files.append(uimg)
     cmd = 'mkimage -A arm -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(addr, entry, zimg, uimg)
     subprocess.call(cmd, shell=True)
     os.chmod(uimg, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
@@ -756,6 +755,7 @@ def dtb_insert_initrd(dtb, initrd_addr):
 
     # de-compile DTB into temp DTS
     fd, tmp_dts = tempfile.mkstemp(suffix=".dts")
+    temp_files.append(tmp_dts)
     os.close(fd)
     cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
     subprocess.call(cmd, shell=True)
@@ -770,6 +770,7 @@ def dtb_insert_initrd(dtb, initrd_addr):
 
     # Re-compile DTS into new DTB
     fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
+    temp_files.append(dtb_modified)
     os.close(fd)
     cmd = "dtc -I dts -O dtb -o %s %s > /dev/null 2>&1" %(dtb_modified, tmp_dts)
     subprocess.call(cmd, shell=True)
@@ -781,10 +782,9 @@ def dtb_insert_initrd(dtb, initrd_addr):
 
 def initrd_add_uboot_header(initrd):
     """Add u-boot initrd header so it can be booted using u-boot bootm/bootz."""
-    global initrd_uboot_tmp
-
     basename = os.path.basename(initrd)
     fd, initrd_uboot_tmp = tempfile.mkstemp(prefix=basename, suffix=".uboot")
+    temp_files.append(initrd_uboot_tmp)
     os.close(fd)
     cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
@@ -802,6 +802,7 @@ def zimage_hack_endian(kimage):
     magic_hack = struct.pack("<L", zimage_magic)  # ensure LE
 
     fd, zimage_hack = tempfile.mkstemp(prefix="zImage-hack-")
+    temp_files.append(zimage_hack)
     os.close(fd)
     shutil.copyfile(kimage, zimage_hack)
 
@@ -823,6 +824,7 @@ if dtb and initrd_addr and not initrd_uboot:
 
 if dtb and dtb_append:
     fd, kimage_appended = tempfile.mkstemp(prefix="zImage-dtb-")
+    temp_files.append(kimage_appended)
     subprocess.call('cat %s %s > %s' \
                         %(kimage, dtb, kimage_appended), shell=True)
     os.chmod(kimage_appended, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
@@ -925,10 +927,6 @@ finally:
     subprocess.call(cmd, shell=True)
 
     tftp_cleanup()
-    if dtb_modified:
-        os.unlink(dtb_modified)
-    if initrd_uboot_tmp:
-        os.unlink(initrd_uboot_tmp)
     for f in temp_files:
         if (os.path.exists(f)):
             os.unlink(f)
