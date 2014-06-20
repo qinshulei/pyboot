@@ -58,11 +58,14 @@ dry_run = False
 quiet = False
 prompt = ''
 logfile = None
+exp_logfile = None
 run_tests = False
 check_warnings = False
 dhcp = True
 dtb_append = None
 dtb_modified = None
+
+temp_files = []
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vwy")
@@ -390,7 +393,7 @@ class dummy_expect:
         
 def connect_console():
     """ Spawn and connect to serial console (via conmux). """
-    global c, verbose
+    global c, verbose, exp_logfile
 
     if dry_run:
         c = dummy_expect()
@@ -398,7 +401,10 @@ def connect_console():
 
     c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
     try:
-        c.logfile = open(logfile, 'w')
+        fd, exp_logfile = tempfile.mkstemp(prefix="conmux-log-")
+        temp_files.append(exp_logfile)
+        c.logfile = open(exp_logfile, "w")
+
     except IOError:
         print 'WARNING: Unable to open %s.  Enabling verbose mode.' %logfile
         verbose = True
@@ -913,10 +919,16 @@ except Exception as e:
 finally:
     if c.logfile:
         c.logfile.close()
-    # remove all the \r from the expect log (perl is better for this ;)
-    subprocess.call("perl -pi -e 's/\r//g' %s" %logfile, shell=True)
+
+    # remove non-printable chars (and \r) from temp output log, and save to final location
+    cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
+    subprocess.call(cmd, shell=True)
+
     tftp_cleanup()
     if dtb_modified:
         os.unlink(dtb_modified)
     if initrd_uboot_tmp:
         os.unlink(initrd_uboot_tmp)
+    for f in temp_files:
+        if (os.path.exists(f)):
+            os.unlink(f)
