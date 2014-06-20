@@ -59,12 +59,13 @@ quiet = False
 prompt = ''
 logfile = None
 run_tests = False
+check_warnings = False
 dhcp = True
 dtb_append = None
 dtb_modified = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vy")
+    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vwy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -96,6 +97,8 @@ for o, a in opts:
         uimage_addr = a
     elif o == "-v":
         verbose = True
+    elif o == "-w":
+        check_warnings = True
     else:
         assert False, "unhandled option %s" %o
  
@@ -690,11 +693,14 @@ def userspace_info():
         if match:
             progress('userspace: Hardware: %s' %match.group(1))
 
-    command('ip -f inet -o addr')
-    for line in c.before.split('\n'):
-        match = re.match('(\d+):\s+(\w+)\s+(\w+)\s+([0-9.]+)', line)
-        if match:
-            progress('userspace: interface %s: %s' % (match.group(2), match.group(4)))
+def check_errors_warnings():
+    # "dmesg -l" requires "real" dmesg, not busybox dmesg
+    command('DMESG=$(readlink -f /bin/dmesg)')
+    command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l warn | awk \'{ print "[WARN] " $0 }\'')
+    command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l err | awk \'{ print "[ERR] " $0 }\'')
+    # or, on busybox, just check for kern.err, kern.warn in /var/log/messages
+    command('[[ -e /var/log/messages ]] && grep kern.warn /var/log/messages | awk \'{ print "[WARN] " $0 }\'')
+    command('[[ -e /var/log/messages ]] && grep kern.err /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
 
 def run_test(test, cmd):
     timeout = 1200
@@ -875,6 +881,9 @@ try:
     root_shell()
     if not dry_run:
         userspace_info()
+
+    if check_warnings:
+        check_errors_warnings()
 
     if run_tests:
         do_tests()
