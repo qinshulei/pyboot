@@ -425,7 +425,7 @@ def connect_console():
     try:
         c.expect('Connected to')
     except pexpect.EOF, pexpect.TIMEOUT:
-        raise Exception('ERROR: Unable to connect to console.  Giving up.')
+        raise Exception('ERROR: Unable to connect to console.  Giving up.', 'OFFLINE')
 
     c.sendline('')
     progress('console: connected.')
