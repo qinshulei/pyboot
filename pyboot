@@ -706,6 +706,10 @@ def userspace_info():
             progress('userspace: Hardware: %s' %match.group(1))
 
 def check_errors_warnings():
+    # FIXME: these commands are sometimes causing problems when interacting with late output
+    #        kernel messgages (like USB devices appearing on mirabox.)  To prevent
+    #        strange interactions, turn off kernel message output to console.
+    command('dmesg -n 1')  # prevent kernel message output from interfering with this
     # "dmesg -l" requires "real" dmesg, not busybox dmesg
     command('DMESG=$(readlink -f /bin/dmesg)')
     command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l warn | awk \'{ print "[WARN] " $0 }\'')
