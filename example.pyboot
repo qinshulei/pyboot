@@ -16,12 +16,13 @@ dtb_base: %(basedir)s/dts
 
 
 eth_dev:
-ip_cmd='ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::%(eth_dev)s:none:192.168.1.254'
+ip_cmd="ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::%(eth_dev)s:none:192.168.1.254"
 setip_cmd: 'setenv bootargs ${bootargs} %(ip_cmd)s'
 
 #setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.1.254:none'
 #nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=${rootpath}'
-nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
+#nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
+nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/linaro/developer,rsize=4096,wsize=4096'
 
 debug=debug initcall_debug
 
@@ -254,12 +255,13 @@ uboot_env:
 
 [snowball]
 uimage_addr: xip
-loadaddr: 0x00800000
+loadaddr: 0x01000000
 dtb: %(dtb_base)s/ste-snowball.dtb
 #dtb_addr: 0x01000000
 dtb_append: True
-initrd_addr: 0x01100000
-#initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0x03000000
+initrd: %(tftproot)s/buildroot.cpio.gz
+rootfstype: ext3
 # internal eMMC 
 mmcpart: /dev/mmcblk0p3  
 # external SD card
@@ -294,7 +296,7 @@ uboot_env:
 	ethaddr=6e:e6:84:36:8e:9fs
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
-	bootargs=console=ttySAC3,115200n8 debug earlyprintk clk_ignore_unused
+	bootargs=console=ttySAC3,115200n8 debug earlyprintk
 	netargs=%(setip_cmd)s
 
 [kzm9d]
@@ -327,8 +329,8 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [dm365evm]
-loadaddr: 0x80800000
-initrd_addr: 0x80c00000
+loadaddr: 0x81000000
+initrd_addr: 0x82000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	bootargs=console=ttyS0,115200n8 debug earlyprintk
@@ -336,12 +338,13 @@ uboot_env:
 #	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 
 [da850evm]
-loadaddr: 0xc0800000
+loadaddr: 0xc1000000
 dtb: %(dtb_base)s/da850-evm.dtb
 #dtb_addr: 0xc07f0000
 dtb_append: true
-initrd_addr: 0xc0c00000
+initrd_addr: 0xc2000000
 initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_uboot: True
 uboot_env:
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
 #	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
@@ -362,6 +365,7 @@ uboot_env:
 # to use an initrd (which first will be flashed to MMC also)
 # NOTE: requires GPT with "initrd" partition
 initrd: %(tftproot)s/buildroot.cpio.gz
+initrd_addr: 0
 uboot_env:
 	initrd_high=0xffffffff
 #	bootargs=console=ttyS0,115200n8 root=/dev/mmcblk0p8 rootwait rootfstype=ext4
@@ -387,6 +391,22 @@ uboot_env:
 	fdt_high=0xffffffff
 	netargs=%(setip_cmd)s
 		
+[chromebook2]
+uimage_addr: xip
+loadaddr: 0x41000000
+dtb: %(dtb_base)s/exynos5800-peach-pi.dtb
+dtb_append: True
+initrd_addr: 0x42000000
+# External SD card
+mmcpart: /dev/mmcblk1p3
+rootfstype: ext3
+# need to send Ctrl-U after reset to boot from SD card
+post_reset_ctrl: U
+# u-boot output on LCD causes lag on UART, so disable u-boot output to display
+uboot_early: setenv stdout serial
+uboot_env:
+	bootargs=console=ttySAC3,115200 debug earlyprintk %(mmcroot)s
+
 [test]
-#init: mount -t proc none /proc; mount -t sysfs none /sys
+init: mount -t proc none /proc; mount -t sysfs none /sys
 
