@@ -6,7 +6,7 @@
 # and initrd) on <board> using netboot (DHCP + TFTP).  Images are
 # copied to a temporary, TFTP-accessible location (unless already
 # under TFTP root dir) so they can be loaded by <board> via TFTP.
-# 
+#
 # Serial console and hardreset/power-down of <board> is handled
 # through conmux.  Conmux provides the serial console, and also allows
 # special escape that can run arbitrary commands and are useful for
@@ -14,7 +14,8 @@
 #
 # Reads config file from /etc/pyboot.conf, $PWD/.pyboot and ~/.pyboot
 #
-# Authors: Olof Johansson <olof@lixom.net>, Kevin Hilman <khilman@kernel.org>
+# Author: Kevin Hilman <khilman@kernel.org>
+# - with significant early contributions from Olof Johansson <olof@lixom.net>
 #
 # This file is licensed under the terms of the GNU General Public
 # License version 2. This program is licensed "as is" without any
@@ -23,11 +24,17 @@
 # TODO:
 # - generalize bootargs: set by inserting into DTB, not only u-boot env
 #   - needs to handle current post-dhcp init (via netargs)
-# - cleanup: create an array of temp files that all get removed
-#   in "finally"
 #
-import os, sys, time, stat, re
-import pexpect, getopt, tempfile, shutil, subprocess
+import os
+import sys
+import time
+import stat
+import re
+import pexpect
+import getopt
+import tempfile
+import shutil
+import subprocess
 import ConfigParser
 import json
 import struct
@@ -46,136 +53,6 @@ def usage():
     print "  -t: run tests defined in config file"
     print
 
-verbose = False
-interact = False
-uimage_addr = 0
-uimage_addr_default = 0x00008000
-convert_uimage = False
-shutdown = False  # shutdown/halt and poweroff board when done
-cmdline_append = ""
-debug = False
-dry_run = False
-quiet = False
-prompt = ''
-logfile = None
-exp_logfile = None
-run_tests = False
-check_warnings = False
-dhcp = True
-dtb_append = False
-
-temp_files = []
-
-try:
-    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vwy")
-
-except getopt.GetoptError as err:
-    print str(err) # will print something like "option -a not recognized"
-    sys.exit(2)
-for o, a in opts:
-    if o == "-a":
-        dtb_append = True
-    elif o == "-c":
-        cmdline_append = a
-    elif o == "-d":
-        debug = True
-    elif o == "-y":
-        dry_run = True
-    elif o == "-h":
-        usage()
-        sys.exit(0)
-    elif o == "-i":
-        interact = True
-    elif o == "-l":
-        logfile = a
-    elif o == "-s":
-        shutdown = True
-    elif o == "-q":
-        quiet = True
-    elif o == "-t":
-        run_tests = True
-    elif o == "-u":
-        convert_uimage = True
-        uimage_addr = a
-    elif o == "-v":
-        verbose = True
-    elif o == "-w":
-        check_warnings = True
-    else:
-        assert False, "unhandled option %s" %o
- 
-if len(args) < 1:
-    usage()
-    sys.exit(1)
-
-board = args[0]
-tftproot = '/tftpboot'
-serverip = None
-loadaddr = None
-dtb = None
-dtb_addr = None
-initrd = None
-initrd_size = 0
-initrd_addr = None
-initrd_cmdline = False
-initrd_uboot = None
-uboot_env = None
-uboot_early = None
-post_reset_ctrl = None
-log_prefix = 'boot-%s' %board
-if not logfile:
-    logfile = "%s.log" %log_prefix
-start_time = 0
-boot_time = 0
-fastboot = False
-warnings = 0
-boot_meta = {}
-
-config = ConfigParser.ConfigParser()
-config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
-
-section = 'DEFAULT'
-if config.has_section(board):
-    section = board
-
-if debug:
-    for item in config.items(section):
-        print item
-
-# Config file options
-if config.has_option(section, 'serverip'):
-    serverip = config.get(section, 'serverip')
-if config.has_option(section, 'tftproot'):
-    tftproot = config.get(section, 'tftproot')
-if config.has_option(section, 'image'):
-    kimage = config.get(section, 'image')
-if config.has_option(section, 'dtb'):
-    dtb = config.get(section, 'dtb')
-if config.has_option(section, 'initrd'):
-    initrd = config.get(section, 'initrd')
-if config.has_option(section, 'uboot_env'):
-    uboot_env = config.get(section, 'uboot_env')
-if config.has_option(section, 'uboot_early'):
-    uboot_early = config.get(section, 'uboot_early')
-if uimage_addr == 0 and config.has_option(section, 'uimage_addr'):
-    uimage_addr = config.get(section, 'uimage_addr')
-    convert_uimage = True
-if config.has_option(section, 'uimage_addr_default'):
-    uimage_addr_default = int(config.get(section, 'uimage_addr_default'), 16)
-if config.has_option(section, 'dhcp'):
-    dhcp = config.getboolean(section, 'dhcp')
-if config.has_option(section, 'fastboot'):
-    fastboot = config.get(section, 'fastboot')
-if config.has_option(section, 'post_reset_ctrl'):
-    post_reset_ctrl = config.get(section, 'post_reset_ctrl')
-
-if len(args) > 1:
-    kimage = args[1]
-if len(args) > 2:
-    dtb = args[2]
-if len(args) > 3:
-    initrd = args[3]
-
 def path_addr_split(path):
     """Split the argument (of the form path[:addr] into (path, addr)"""
     addr = None
@@ -187,71 +64,6 @@ def path_addr_split(path):
         print "ERROR: file", path, "does not exist."
         sys.exit(1)
     return (path, addr)
-
-(kimage, loadaddr) = path_addr_split(kimage)
-if not loadaddr:
-    if config.has_option(section, 'loadaddr'):
-        loadaddr = config.get(section, 'loadaddr')
-
-boot_meta["kernel_image"] = kimage
-boot_meta["loadaddr"] = loadaddr
-    
-if dtb:
-    (dtb, dtb_addr) = path_addr_split(dtb)
-    if not dtb_addr:
-        if config.has_option(section, 'dtb_append'):
-            dtb_append = True
-            dtb_addr = ''
-        elif config.has_option(section, 'dtb_addr'):
-            dtb_addr = config.get(section, 'dtb_addr')
-
-    boot_meta["dtb"] = dtb
-    boot_meta["dtb_addr"] = dtb_addr
-    boot_meta["dtb_append"] = dtb_append
-
-if not dtb:
-    dtb_addr = ''
-
-if initrd:
-    (initrd, initrd_addr) = path_addr_split(initrd)
-    if initrd:
-        initrd_size = os.path.getsize(initrd)
-        if config.has_option(section, 'initrd_uboot'):
-            initrd_uboot = config.getboolean(section, 'initrd_uboot')
-    if not initrd_addr:
-        if config.has_option(section, 'initrd_addr'):
-            initrd_addr = config.get(section, 'initrd_addr')
-        else:
-            initrd_addr = ""
-
-    boot_meta["initrd"] = initrd
-    boot_meta["initrd_addr"] = initrd_addr
-
-if not initrd:
-    initrd_addr = ''
-
-# Check endianness of zImage
-endian = "little"
-out = subprocess.check_output("file %s" %kimage, shell=True).strip()
-f, magic = out.split(":", 1)
-m = re.search(".*\((\w+)-endian\)", magic)
-if m:
-    endian = m.group(1)
-boot_meta["endian"] = endian
-boot_meta["fastboot"] = fastboot
-
-if not quiet:
-    print "Board:", board
-    print "Kernel:", kimage, loadaddr, "(endian: %s)" %endian
-    if initrd:
-        print "initrd:", initrd, initrd_addr, initrd_size
-    if dtb:
-        print "DTB:", dtb, 
-        if dtb_append:
-            print "(appending to kernel image)"
-            dtb_addr = ""
-        else:
-            print dtb_addr
 
 def progress(str, log=False):
     global start_time, c
@@ -823,6 +635,201 @@ def zimage_hack_endian(kimage):
     fp.close()
     print "zImage: HACK: forcing little-endian magic number in %s" %zimage_hack
     return zimage_hack
+
+verbose = False
+interact = False
+uimage_addr = 0
+uimage_addr_default = 0x00008000
+convert_uimage = False
+shutdown = False  # shutdown/halt and poweroff board when done
+cmdline_append = ""
+debug = False
+dry_run = False
+quiet = False
+prompt = ''
+logfile = None
+exp_logfile = None
+run_tests = False
+check_warnings = False
+dhcp = True
+dtb_append = False
+
+temp_files = []
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vwy")
+
+except getopt.GetoptError as err:
+    print str(err) # will print something like "option -a not recognized"
+    sys.exit(2)
+for o, a in opts:
+    if o == "-a":
+        dtb_append = True
+    elif o == "-c":
+        cmdline_append = a
+    elif o == "-d":
+        debug = True
+    elif o == "-y":
+        dry_run = True
+    elif o == "-h":
+        usage()
+        sys.exit(0)
+    elif o == "-i":
+        interact = True
+    elif o == "-l":
+        logfile = a
+    elif o == "-s":
+        shutdown = True
+    elif o == "-q":
+        quiet = True
+    elif o == "-t":
+        run_tests = True
+    elif o == "-u":
+        convert_uimage = True
+        uimage_addr = a
+    elif o == "-v":
+        verbose = True
+    elif o == "-w":
+        check_warnings = True
+    else:
+        assert False, "unhandled option %s" %o
+ 
+if len(args) < 1:
+    usage()
+    sys.exit(1)
+
+board = args[0]
+tftproot = '/tftpboot'
+serverip = None
+loadaddr = None
+dtb = None
+dtb_addr = None
+initrd = None
+initrd_size = 0
+initrd_addr = None
+initrd_cmdline = False
+initrd_uboot = None
+uboot_env = None
+uboot_early = None
+post_reset_ctrl = None
+log_prefix = 'boot-%s' %board
+if not logfile:
+    logfile = "%s.log" %log_prefix
+start_time = 0
+boot_time = 0
+fastboot = False
+warnings = 0
+boot_meta = {}
+
+config = ConfigParser.ConfigParser()
+config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
+
+section = 'DEFAULT'
+if config.has_section(board):
+    section = board
+
+if debug:
+    for item in config.items(section):
+        print item
+
+# Config file options
+if config.has_option(section, 'serverip'):
+    serverip = config.get(section, 'serverip')
+if config.has_option(section, 'tftproot'):
+    tftproot = config.get(section, 'tftproot')
+if config.has_option(section, 'image'):
+    kimage = config.get(section, 'image')
+if config.has_option(section, 'dtb'):
+    dtb = config.get(section, 'dtb')
+if config.has_option(section, 'initrd'):
+    initrd = config.get(section, 'initrd')
+if config.has_option(section, 'uboot_env'):
+    uboot_env = config.get(section, 'uboot_env')
+if config.has_option(section, 'uboot_early'):
+    uboot_early = config.get(section, 'uboot_early')
+if uimage_addr == 0 and config.has_option(section, 'uimage_addr'):
+    uimage_addr = config.get(section, 'uimage_addr')
+    convert_uimage = True
+if config.has_option(section, 'uimage_addr_default'):
+    uimage_addr_default = int(config.get(section, 'uimage_addr_default'), 16)
+if config.has_option(section, 'dhcp'):
+    dhcp = config.getboolean(section, 'dhcp')
+if config.has_option(section, 'fastboot'):
+    fastboot = config.get(section, 'fastboot')
+if config.has_option(section, 'post_reset_ctrl'):
+    post_reset_ctrl = config.get(section, 'post_reset_ctrl')
+
+if len(args) > 1:
+    kimage = args[1]
+if len(args) > 2:
+    dtb = args[2]
+if len(args) > 3:
+    initrd = args[3]
+
+(kimage, loadaddr) = path_addr_split(kimage)
+if not loadaddr:
+    if config.has_option(section, 'loadaddr'):
+        loadaddr = config.get(section, 'loadaddr')
+
+boot_meta["kernel_image"] = kimage
+boot_meta["loadaddr"] = loadaddr
+    
+if dtb:
+    (dtb, dtb_addr) = path_addr_split(dtb)
+    if not dtb_addr:
+        if config.has_option(section, 'dtb_append'):
+            dtb_append = True
+            dtb_addr = ''
+        elif config.has_option(section, 'dtb_addr'):
+            dtb_addr = config.get(section, 'dtb_addr')
+
+    boot_meta["dtb"] = dtb
+    boot_meta["dtb_addr"] = dtb_addr
+    boot_meta["dtb_append"] = dtb_append
+
+if not dtb:
+    dtb_addr = ''
+
+if initrd:
+    (initrd, initrd_addr) = path_addr_split(initrd)
+    if initrd:
+        initrd_size = os.path.getsize(initrd)
+        if config.has_option(section, 'initrd_uboot'):
+            initrd_uboot = config.getboolean(section, 'initrd_uboot')
+    if not initrd_addr:
+        if config.has_option(section, 'initrd_addr'):
+            initrd_addr = config.get(section, 'initrd_addr')
+        else:
+            initrd_addr = ""
+
+    boot_meta["initrd"] = initrd
+    boot_meta["initrd_addr"] = initrd_addr
+
+if not initrd:
+    initrd_addr = ''
+
+# Check endianness of zImage
+endian = "little"
+out = subprocess.check_output("file %s" %kimage, shell=True).strip()
+f, magic = out.split(":", 1)
+m = re.search(".*\((\w+)-endian\)", magic)
+if m:
+    endian = m.group(1)
+boot_meta["endian"] = endian
+boot_meta["fastboot"] = fastboot
+
+if not quiet:
+    print "Board:", board
+    print "Kernel:", kimage, loadaddr, "(endian: %s)" %endian
+    if initrd:
+        print "initrd:", initrd, initrd_addr, initrd_size
+    if dtb:
+        print "DTB:", dtb, 
+        if dtb_append:
+            print "(appending to kernel image)"
+            dtb_addr = ""
+        else:
+            print dtb_addr
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
