@@ -41,7 +41,6 @@ uboot_env:
    preboot=usb start
    initrd_high=0xffffffff
    bootargs=console=ttyO2,115200n8 debug earlyprintk
-#   bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
    netargs=%(setip_cmd)s
 
 [4460panda-es]
@@ -55,16 +54,12 @@ uboot_env:
 	preboot=usb start
 	initrd_high=0xffffffff
 	bootargs=console=ttyO2,115200n8 debug earlyprintk
-#	bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
           
 [arndale]
-#loadaddr: 0x40800000
-#dtb_addr: 0x407c0000
 loadaddr: 0x41000000
-dtb_addr: 0x40f00000
+dtb_addr: 0x41f00000
 dtb: %(dtb_base)s/exynos5250-arndale.dtb
-#initrd_addr: 0x41000000
 initrd_addr: 0x42000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 mmcpart: /dev/mmcblk1p3
@@ -88,13 +83,11 @@ loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-beagle-xm.dtb
 initrd_addr: 0x82000000
-# 2013/12/20: MMC rootfs started failing (or timing out)
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	usbethaddr=2a:45:34:6d:b4:5d
 	preboot="dcache off; usb start"  # For USB net
 	bootargs=console=ttyO2,115200n8 earlyprintk
-#	bootargs=console=ttyO2,115200n8 earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 
@@ -103,12 +96,10 @@ loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-overo-tobi.dtb
 initrd_addr: 0x82000000
-# MMC not working on Overo, needs initramfs
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	ethaddr=fe:06:88:cd:08:6f
 	bootargs=console=ttyO2,115200n8 earlyprintk debug
-#	bootargs=console=ttyO2,115200n8 earlyprintk debug %(mmcroot)s
 	netargs=%(setip_cmd)s
 	
 [3730storm]
@@ -141,8 +132,6 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [cubie]
-#loadaddr: 0x40008000
-#dtb_addr: 0x41000000
 loadaddr: 0x41008000
 dtb_addr: 0x42000000
 dtb: %(dtb_base)s/sun4i-a10-cubieboard.dtb
@@ -155,8 +144,6 @@ uboot_env:
 	initrd_high=0xffffffff
 
 [cubie2]
-#loadaddr: 0x40008000
-#dtb_addr: 0x41000000
 loadaddr: 0x41000000
 dtb_addr: 0x42000000
 dtb: %(dtb_base)s/sun7i-a20-cubieboard2.dtb
@@ -255,7 +242,6 @@ uboot_env:
 uimage_addr: xip
 loadaddr: 0x01000000
 dtb: %(dtb_base)s/ste-snowball.dtb
-#dtb_addr: 0x01000000
 dtb_append: True
 initrd_addr: 0x03000000
 initrd: %(tftproot)s/buildroot.cpio.gz
@@ -270,8 +256,6 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [odroid-xu]
-#uimage_addr: 0x40008000
-#uimage_addr: hack
 loadaddr: 0x41000000
 dtb: %(dtb_base)s/exynos5410-smdk5410.dtb
 dtb_append: True
@@ -282,12 +266,9 @@ uboot_env:
 	bootargs=console=ttySAC2,115200n8 debug earlyprintk
 
 [octa]
-#loadaddr: 0x20400000
 loadaddr: 0x21000000
 dtb: %(dtb_base)s/exynos5420-arndale-octa.dtb
-#dtb_addr: 0x20f00000
 dtb_addr: 0x23000000
-#initrd_addr: 0x21000000
 initrd_addr: 0x22000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
@@ -312,7 +293,6 @@ uboot_env:
 loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap5-uevm.dtb
-#initrd_addr: 0x81000000
 initrd_addr: 0x82000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
@@ -329,20 +309,16 @@ initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
 	bootargs=console=ttyS0,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
-#	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 
 [da850evm]
 loadaddr: 0xc1000000
 dtb: %(dtb_base)s/da850-evm.dtb
-#dtb_addr: 0xc07f0000
 dtb_append: True
 initrd_addr: 0xc2000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 initrd_uboot: True
 uboot_env:
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
-#	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
-
 
 [dragon]
 fastboot: True
@@ -362,7 +338,6 @@ initrd: %(tftproot)s/buildroot.cpio.gz
 initrd_addr: 0
 uboot_env:
 	initrd_high=0xffffffff
-#	bootargs=console=ttyS0,115200n8 root=/dev/mmcblk0p8 rootwait rootfstype=ext4
 	bootargs="console=ttyS0,115200n8 initrd=0x9d000000,0x100000"
 	bootcmd="mmc read 0x9e000000 0x11a80 0x4000;mmc read 0x90008000 0x1c000 0x8000;mmc read 0x9d000000 0x524000 0x8000; bootz 0x90008000 - 0x9e000000"
 
@@ -375,7 +350,6 @@ dtb: %(dtb_base)s/omap3-n900.dtb
 loadaddr: 0x81000000
 dtb_addr: 0x82000000
 dtb: %(dtb_base)s/tegra124-jetson-tk1.dtb
-#initrd_addr: 0x82100000
 initrd_addr: 0x83000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
