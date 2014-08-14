@@ -73,7 +73,7 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [3530beagle]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-beagle.dtb
 initrd_addr: 0x82000000
@@ -84,7 +84,7 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [3730xm]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-beagle-xm.dtb
 initrd_addr: 0x82000000
@@ -99,7 +99,7 @@ uboot_env:
 
 
 [3530overo]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-overo-tobi.dtb
 initrd_addr: 0x82000000
@@ -112,7 +112,7 @@ uboot_env:
 	netargs=%(setip_cmd)s
 	
 [3730storm]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap3-overo-storm-tobi.dtb
 initrd_addr: 0x82000000
@@ -121,25 +121,23 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [am335xbone]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/am335x-bone.dtb
 initrd_addr: 0x82000000
-# MMC not merged, needs initramfs
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=ttyO0,115200n8 earlyprintk %(mmcroot)s
+	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [am335xboneb]
-loadaddr: 0x80200000
+loadaddr: 0x81000000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
 dtb_addr: 0x81f00000
 initrd_addr: 0x82000000
-# MMC not merged, needs initramfs
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
-	bootargs=console=ttyO0,115200n8 earlyprintk %(mmcroot)s
+	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [cubie]
@@ -300,21 +298,17 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [kzm9d]
-uimage_addr: 0x40008000
-#loadaddr: 0x40400000
-loadaddr: 0x40000000
-#dtb_addr: 0x407c0000
+uimage_addr: xip
+loadaddr: 0x40400000
 dtb_append: True
 dtb: %(dtb_base)s/emev2-kzm9d.dtb
-initrd_addr: 0x40800000
+initrd_addr: 0x40c00000
 initrd: %(tftproot)s/buildroot.cpio.gz
 uboot_env:
    initrd_high=0xffffffff
-   bootargs=console=ttyS1,115200n81 ip=dhcp root=/dev/nfs
+   bootargs=console=ttyS1,115200n81
 
 [omap5uevm]
-#loadaddr: 0x82000000
-#dtb_addr: 0x80f80000
 loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap5-uevm.dtb
@@ -341,7 +335,7 @@ uboot_env:
 loadaddr: 0xc1000000
 dtb: %(dtb_base)s/da850-evm.dtb
 #dtb_addr: 0xc07f0000
-dtb_append: true
+dtb_append: True
 initrd_addr: 0xc2000000
 initrd: %(tftproot)s/buildroot.cpio.gz
 initrd_uboot: True
