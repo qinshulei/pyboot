@@ -600,8 +600,40 @@ def dtb_insert_initrd(dtb, initrd_addr):
     os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "DTB: new/modified DTB: %s" %dtb_modified
+    print "DTB: modified for initrd: %s" %dtb_modified
     return dtb_modified
+
+def dtb_insert_cmdline(dtb, cmdline):
+    global bootargs
+
+    # de-compile DTB into temp DTS
+    fd, tmp_dts = tempfile.mkstemp(suffix=".dts")
+    temp_files.append(tmp_dts)
+    os.close(fd)
+    cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
+    subprocess.call(cmd, shell=True)
+
+    initrd_start = int(initrd_addr, 16)
+    initrd_end = initrd_start + initrd_size
+    chosen_frag = '/ { chosen { bootargs = "%s"; }; };\n' %bootargs
+    fp = open(tmp_dts, 'a')
+    fp.write(chosen_frag)
+    fp.close()
+    initrd_cmdline = True
+
+    # Re-compile DTS into new DTB
+    fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
+    temp_files.append(dtb_modified)
+    os.close(fd)
+    cmd = "dtc -I dts -O dtb -o %s %s > /dev/null 2>&1" %(dtb_modified, tmp_dts)
+    subprocess.call(cmd, shell=True)
+    os.unlink(tmp_dts)
+    os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    print "DTB: modified with bootargs: %s.  New commandline: " %dtb_modified,
+    print subprocess.call("fdtget %s /chosen bootargs" %dtb_modified, shell=True)
+    return dtb_modified
+
 
 def initrd_add_uboot_header(initrd):
     """Add u-boot initrd header so it can be booted using u-boot bootm/bootz."""
@@ -718,6 +750,7 @@ if not logfile:
 start_time = 0
 boot_time = 0
 fastboot = False
+bootargs = None
 warnings = 0
 boot_meta = {}
 
@@ -758,6 +791,8 @@ if config.has_option(section, 'fastboot'):
     fastboot = config.get(section, 'fastboot')
 if config.has_option(section, 'post_reset_ctrl'):
     post_reset_ctrl = config.get(section, 'post_reset_ctrl')
+if config.has_option(section, 'bootargs'):
+    bootargs = config.get(section, 'bootargs')
 
 if len(args) > 1:
     kimage = args[1]
@@ -839,6 +874,8 @@ if endian == "big":
 
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
+if dtb:
+    dtb = dtb_insert_cmdline(dtb, bootargs)
 
 if dtb and dtb_append:
     fd, kimage_appended = tempfile.mkstemp(prefix="zImage-dtb-")
