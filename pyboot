@@ -346,8 +346,6 @@ def init_net():
             break;
         elif i == 1:
             raise Exception('u-boot: does not support DHCP.  Giving up.')
-        elif i == 2:
-            raise Exception('u-boot: ERROR: DHCP retry count exceeded.')
         else:
             retries = retries - 1
             if retries:
