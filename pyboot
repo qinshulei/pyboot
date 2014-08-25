@@ -464,7 +464,7 @@ def wait_for_kernel():
               'Kernel panic',
               'VFS: Unable to mount root fs',
               '-+\[ cut here \]-+\s+(.*\s+-+\[ end trace (\w*) \]-+)',
-              'Unhandled fault',
+              '(Unhandled fault.*)\r\n',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
         if i == 0 or i == 1:  
@@ -481,7 +481,8 @@ def wait_for_kernel():
             continue
         elif i == 6:
             warnings += 1
-            progress("kernel: FAULT: %s" %pl[1], log=True)
+            msg = c.match.group(0)
+            progress("kernel: %s" %msg, log=True)
             continue
         else:
             raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
@@ -498,7 +499,7 @@ def root_shell():
           "press Enter to activate",  # busybox
           pexpect.TIMEOUT,
           "Kernel panic",
-          "Unhandled fault:",
+          "(Unhandled fault.*)\r\n",
     ]
     i = c.expect(pl, timeout=120)
     if i == 0:
@@ -509,7 +510,8 @@ def root_shell():
         raise Exception('userspace: ERROR: Never found root shell')
     elif i == 4:
         warnings += 1
-        progress('userspace: FAULT: %s' %pl[i], log=True)
+        msg = c.match.group(0)
+        progress('kernel: %s' %msg, log=True)
     else:
         raise Exception('userspace: failed to find root shell: %s' %pl[i])
     
