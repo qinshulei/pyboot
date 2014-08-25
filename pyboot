@@ -24,6 +24,9 @@
 # TODO:
 # - generalize bootargs: set by inserting into DTB, not only u-boot env
 #   - needs to handle current post-dhcp init (via netargs)
+# - add locking support for mutual exclusion.  If locked, report BUSY instead of OFFLINE
+# - instrument kernel backtraces for easy logging/coloring
+# - add 'console_host' option in config file for conmux
 #
 import os
 import sys
@@ -76,6 +79,7 @@ def progress(str, log=False):
     timestamp = '[%02d:%02d]' %(min, sec)
 
     if log and c.logfile:
+        c.logfile.flush()
         c.logfile.write("\n# PYBOOT: %s\n" %str)
 
     if verbose:
@@ -175,6 +179,7 @@ def do_report(retval=0, result=None):
         print "# PYBOOT: Result: %s" %result
 
     if c.logfile:
+        c.logfile.flush()
         c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
         if warnings:
             c.logfile.write("# PYBOOT: Warnings: %d\n" %warnings)
@@ -240,7 +245,7 @@ def connect_console():
         raise Exception('ERROR: Unable to connect to console.  Giving up.', 'OFFLINE')
 
     c.sendline('')
-    progress('console: connected.')
+    progress('console: connected.', log=True)
 
 def sendline(str):
     global c
@@ -292,7 +297,7 @@ def boot_to_uboot():
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
     c.sendline('\r')
-    progress('u-boot: taking control.')
+    progress('u-boot: taking control.', log=True)
 
     # Find u-boot prompt
     try:
@@ -306,7 +311,7 @@ def boot_to_uboot():
 
 def init_uboot_env():
     """ Initialize default u-boot env, including values from config file."""
-    global prompt
+    global prompt, custom_boot
 
     # Send this command one char at time
     if uboot_early:
@@ -324,6 +329,11 @@ def init_uboot_env():
         for var in uboot_vars:
             (key, val) = var.split('=', 1)
             command('setenv %s %s' %(key, val))
+
+            # If 'bootcmd' is set, assume we shoudl use this instead of the standard
+            # netboot method
+            if key == "bootcmd":
+                custom_boot = True
 
     command('if test -n ${initenv}; then run initenv; fi')
     command('if test -n ${preboot}; then run preboot; fi')
@@ -350,7 +360,7 @@ def init_net():
             retries = retries - 1
             if retries:
                 progress('u-boot: DHCP timeout. Trying again (retries=%d)' \
-                             %retries)
+                             %retries, log=True)
             else:
                 raise Exception('u-boot: ERROR: timeout getting DHCP address.')
 
@@ -360,12 +370,12 @@ def init_net():
     command("if test -n ${netargs}; then run netargs; fi")
 
 def fastboot_image(kernel, dtb, initrd):
-    progress('u-boot: entering fastboot mode.')
+    progress('u-boot: entering fastboot mode.', log=True)
     command('printenv bootargs')
     c.sendline('fastboot')
 
     # The rest of the fastboot magic here is hidden by conmux
-    progress('fastboot: loading %s, %s, %s' % (kernel, dtb, initrd))
+    progress('fastboot: loading %s, %s, %s' % (kernel, dtb, initrd), log=True)
     c.sendline('~$fastboot %s %s %s' % (kernel, dtb, initrd))
 
 def load_image(file, addr):
@@ -391,7 +401,7 @@ def load_image(file, addr):
             raise Exception('ERROR: TFTP error.')
         else:
             if retries:
-                progress('u-boot: timeout loading %s, Trying again.' %file)
+                progress('u-boot: timeout loading %s, Trying again.' %file, log=True)
                 c.send('\003')  # Ctrl-C: abort current tftp
                 c.expect(prompt)
             else:
@@ -411,7 +421,7 @@ def boot_kernel():
 
     # Boot the kernel
     sendline('%s %s %s %s' %(boot_cmd, loadaddr, initrd_addr, dtb_addr))
-    progress("u-boot: jumping to kernel image")
+    progress("u-boot: jumping to kernel image", log=True)
 
     # U-boot should tell us quickly that it's starting the kernel
     i = c.expect(['Starting kernel',
@@ -469,14 +479,18 @@ def wait_for_kernel():
             if not quiet:
                 print c.match.group(1)
             continue
+        elif i == 6:
+            warnings += 1
+            progress("kernel: FAULT: %s" %pl[1], log=True)
+            continue
         else:
             raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
 
-    progress('kernel: finished booting, starting userspace.')
+    progress('kernel: finished booting, starting userspace.', log=True)
 
 def root_shell():
     """ Wait for linux root shell. """
-    global prompt
+    global prompt, warnings
 
     # Wait for linux root shell
     prompt = "# "
@@ -484,7 +498,7 @@ def root_shell():
           "press Enter to activate",  # busybox
           pexpect.TIMEOUT,
           "Kernel panic",
-          "Unhandled fault",
+          "Unhandled fault:",
     ]
     i = c.expect(pl, timeout=120)
     if i == 0:
@@ -493,10 +507,13 @@ def root_shell():
         command('\n')
     elif i == 2:
         raise Exception('userspace: ERROR: Never found root shell')
+    elif i == 4:
+        warnings += 1
+        progress('userspace: FAULT: %s' %pl[i], log=True)
     else:
         raise Exception('userspace: failed to find root shell: %s' %pl[i])
     
-    progress("userspace: at root shell")
+    progress("userspace: at root shell", log=True)
 
 def userspace_info():
     global prompt, kernelversion
@@ -524,9 +541,12 @@ def check_errors_warnings():
     command('DMESG=$(readlink -f /bin/dmesg)')
     command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l warn | awk \'{ print "[WARN] " $0 }\'')
     command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l err | awk \'{ print "[ERR] " $0 }\'')
+    command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l alert | awk \'{ print "[ERR] " $0 }\'')
     # or, on busybox, just check for kern.err, kern.warn in /var/log/messages
     command('[[ -e /var/log/messages ]] && grep kern.warn /var/log/messages | awk \'{ print "[WARN] " $0 }\'')
     command('[[ -e /var/log/messages ]] && grep kern.err /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
+    command('[[ -e /var/log/messages ]] && grep kern.alert /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
+    command('sleep 0.2')
 
 def run_test(test, cmd):
     timeout = 1200
@@ -628,8 +648,7 @@ def dtb_insert_cmdline(dtb, cmdline):
     os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "DTB: modified with bootargs: %s.  New commandline: " %dtb_modified,
-    print subprocess.call("fdtget %s /chosen bootargs" %dtb_modified, shell=True)
+    print "DTB: modified with bootargs: %s.  New commandline: " %bootargs,
     return dtb_modified
 
 
@@ -751,6 +770,7 @@ fastboot = False
 bootargs = None
 warnings = 0
 boot_meta = {}
+custom_boot = False
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -872,7 +892,7 @@ if endian == "big":
 
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
-if dtb:
+if dtb and bootargs:
     dtb = dtb_insert_cmdline(dtb, bootargs)
 
 if dtb and dtb_append:
@@ -906,6 +926,9 @@ try:
 
     if fastboot:
         fastboot_image(kimage, dtb, initrd)
+    elif custom_boot:
+        # Just run 'boot' using bootcmd from u-boot env
+        command('boot')
     else:
         if not dry_run:
             init_net()
@@ -940,7 +963,7 @@ try:
         do_tests()
 
     if shutdown:
-        progress('userspace: shutting down')
+        progress('userspace: shutting down', log=True)
         c.sendline('halt')
         time.sleep(1)
         poweroff()
