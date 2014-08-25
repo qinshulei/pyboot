@@ -217,12 +217,24 @@ class dummy_expect:
 def connect_console():
     """ Spawn and connect to serial console (via conmux). """
     global c, verbose, exp_logfile
+    global kimage, dtb, initrd
 
     if dry_run:
         c = dummy_expect()
         return
 
-    c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
+    if qemu:
+        qemu_cmd = "qemu-system-arm -nographic %s -kernel %s" %(qemu_args, kimage)
+        if dtb:
+            qemu_cmd += " -dtb %s" %dtb
+        if initrd:
+            qemu_cmd += " -initrd %s" %initrd
+        if bootargs:
+            qemu_cmd += " -append %s" %bootargs
+        progress("qemu: running: %s" %qemu_cmd)
+        c = pexpect.spawn(qemu_cmd, timeout=30)
+    else:
+        c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
     try:
         fd, exp_logfile = tempfile.mkstemp(prefix="conmux-log-")
         temp_files.append(exp_logfile)
@@ -239,9 +251,18 @@ def connect_console():
     #
     if verbose:
         c.logfile_read = sys.stdout 
-    try:
-        c.expect('Connected to')
-    except pexpect.EOF, pexpect.TIMEOUT:
+
+    i = c.expect(["Connected to", 
+                  "Booting Linux",
+                  pexpect.TIMEOUT, pexpect.EOF])
+    if i == 0:
+        # connected normally
+        pass
+    elif i == 1 and qemu:
+        # in qemu, kernel can directly start booting
+        pass
+    else:
+        print "i = ", i
         raise Exception('ERROR: Unable to connect to console.  Giving up.', 'OFFLINE')
 
     c.sendline('')
@@ -257,10 +278,15 @@ def command(str, exp=None, timeout=-1):
     if debug:
         progress('cmd: %s' % str)
     sendline(str)
-    try:
-        c.expect(exp or prompt, timeout=timeout)
-    except pexpect.TIMEOUT:
-        raise Exception('ERROR: Timeout waiting for command: %s.' %str)
+    i = c.expect([exp or prompt, 
+                  pexpect.EOF,
+                  pexpect.TIMEOUT], timeout=timeout)
+    if i == 0:
+        pass
+    elif i == 1:
+        raise Exception("ERROR: console: unexpectedly disconnected.")
+    else:
+        raise Exception("ERROR: Timeout waiting for command: %s." %str)
 
 def boot_to_uboot():
     global prompt, post_reset_ctrl
@@ -633,13 +659,10 @@ def dtb_insert_cmdline(dtb, cmdline):
     cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
     subprocess.call(cmd, shell=True)
 
-    initrd_start = int(initrd_addr, 16)
-    initrd_end = initrd_start + initrd_size
     chosen_frag = '/ { chosen { bootargs = "%s"; }; };\n' %bootargs
     fp = open(tmp_dts, 'a')
     fp.write(chosen_frag)
     fp.close()
-    initrd_cmdline = True
 
     # Re-compile DTS into new DTB
     fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
@@ -650,7 +673,7 @@ def dtb_insert_cmdline(dtb, cmdline):
     os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "DTB: modified with bootargs: %s.  New commandline: " %bootargs,
+    print "DTB: modified with bootargs: %s.\n" %bootargs,
     return dtb_modified
 
 
@@ -659,7 +682,7 @@ def initrd_add_uboot_header(initrd):
     basename = os.path.basename(initrd)
     fd, initrd_uboot_tmp = tempfile.mkstemp(prefix=basename, suffix=".uboot")
     temp_files.append(initrd_uboot_tmp)
-    os.close(fd)
+    os.close(fd) 
     cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
     if os.path.exists(initrd_uboot_tmp):
@@ -751,6 +774,7 @@ if len(args) < 1:
 
 board = args[0]
 tftproot = '/tftpboot'
+tftpdir = None
 serverip = None
 loadaddr = None
 dtb = None
@@ -773,6 +797,8 @@ bootargs = None
 warnings = 0
 boot_meta = {}
 custom_boot = False
+qemu = False
+qemu_args = None
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -813,6 +839,11 @@ if config.has_option(section, 'post_reset_ctrl'):
     post_reset_ctrl = config.get(section, 'post_reset_ctrl')
 if config.has_option(section, 'bootargs'):
     bootargs = config.get(section, 'bootargs')
+if config.has_option(section, 'qemu'):
+    qemu = config.getboolean(section, 'qemu')
+if qemu:
+    if config.has_option(section, "qemu_args"):
+        qemu_args = config.get(section, 'qemu_args')
 
 if len(args) > 1:
     kimage = args[1]
@@ -911,26 +942,30 @@ if convert_uimage:
     boot_meta["uImage"] = True
     boot_meta["uimage_addr"] = uimage_addr
 
-if (initrd and not dtb) or initrd_uboot:
-    initrd = initrd_add_uboot_header(initrd)
+if not qemu:
+    if (initrd and not dtb) or initrd_uboot:
+        initrd = initrd_add_uboot_header(initrd)
 
-tftp_setup()
-kimage = tftp_relpath(kimage)
-if dtb:
-    dtb = tftp_relpath(dtb)
-if initrd:
-    initrd = tftp_relpath(initrd)
+    tftp_setup()
+    kimage = tftp_relpath(kimage)
+    if dtb:
+        dtb = tftp_relpath(dtb)
+    if initrd:
+        initrd = tftp_relpath(initrd)
 
 try:
     connect_console()
-    boot_to_uboot()
-    init_uboot_env()
+    if not qemu:
+        boot_to_uboot()
+        init_uboot_env()
 
     if fastboot:
         fastboot_image(kimage, dtb, initrd)
     elif custom_boot:
         # Just run 'boot' using bootcmd from u-boot env
         command('boot')
+    elif qemu:
+        pass
     else:
         if not dry_run:
             init_net()
