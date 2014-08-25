@@ -234,7 +234,10 @@ def connect_console():
         progress("qemu: running: %s" %qemu_cmd)
         c = pexpect.spawn(qemu_cmd, timeout=30)
     else:
-        c = pexpect.spawn("conmux-console vence/%s" %board, timeout=30)
+        conmux_board = board
+        if conmux_host:
+            conmux_board = "%s/%s" %(conmux_host, board)
+        c = pexpect.spawn("conmux-console %s" %(conmux_board), timeout=30)
     try:
         fd, exp_logfile = tempfile.mkstemp(prefix="conmux-log-")
         temp_files.append(exp_logfile)
@@ -799,6 +802,7 @@ boot_meta = {}
 custom_boot = False
 qemu = False
 qemu_args = None
+conmux_host = None
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -844,6 +848,8 @@ if config.has_option(section, 'qemu'):
 if qemu:
     if config.has_option(section, "qemu_args"):
         qemu_args = config.get(section, 'qemu_args')
+if config.has_option(section, 'conmux_host'):
+    conmux_host = config.get(section, 'conmux_host')
 
 if len(args) > 1:
     kimage = args[1]
