@@ -432,7 +432,7 @@ def load_image(file, addr):
         elif (i == 2):
             if tftp_cmd == "tftp":
                 progress("u-boot: tftp command not present, trying tftpboot")
-                tftp_cmd = "tftpboot_"
+                tftp_cmd = "tftpboot"
                 c.expect(prompt)
             else:
                 raise Exception("ERROR: u-boot doesn't support TFTP")
