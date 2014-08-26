@@ -410,24 +410,32 @@ def fastboot_image(kernel, dtb, initrd):
 def load_image(file, addr):
     global prompt
     retries = 3
-
+    tftp_cmd = 'tftp'
     if serverip:
         file = "%s:%s" %(serverip, file)
 
     progress('u-boot: TFTP %s to %s' %(file, addr))
     while retries:
-        sendline('tftp %s %s' %(addr, file))
+        sendline('%s %s %s' %(tftp_cmd, addr, file))
         retries = retries - 1
         i = c.expect(['Bytes transferred', 
                       'TFTP error',
+                      'Unknown command',
                       'Retry count exceeded',
                       pexpect.TIMEOUT],
                      timeout=30)
         if (i == 0):
             c.expect(prompt)
             break
-        if (i == 1):
+        elif (i == 1):
             raise Exception('ERROR: TFTP error.')
+        elif (i == 2):
+            if tftp_cmd == "tftp":
+                progress("u-boot: tftp command not present, trying tftpboot")
+                tftp_cmd = "tftpboot_"
+                c.expect(prompt)
+            else:
+                raise Exception("ERROR: u-boot doesn't support TFTP")
         else:
             if retries:
                 progress('u-boot: timeout loading %s, Trying again.' %file, log=True)
