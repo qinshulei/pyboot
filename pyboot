@@ -231,6 +231,7 @@ def connect_console():
             qemu_cmd += " -initrd %s" %initrd
         if bootargs:
             qemu_cmd += " -append \"%s\"" %bootargs
+        boot_meta["qemu_command"] = qemu_cmd
         c = pexpect.spawn(qemu_cmd, timeout=30)
     else:
         conmux_board = board
@@ -921,6 +922,8 @@ if m:
     endian = m.group(1)
 boot_meta["endian"] = endian
 boot_meta["fastboot"] = fastboot
+if qemu:
+    boot_meta["qemu"] = qemu
 
 if not quiet:
     print "Board:", board
