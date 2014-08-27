@@ -374,24 +374,39 @@ uboot_env:
 	bootargs=console=ttySAC3,115200 debug earlyprintk %(mmcroot)s
 
 [versatilepb]
-qemu: True
+qemu: qemu-system-arm
 qemu_args: -M versatilepb
 initrd: %(tftproot)s/buildroot.cpio.gz
 bootargs: console=ttyAMA0
 
 [vexpress-v2p-ca9]
-qemu: True
+qemu: qemu-system-arm
 qemu_args: -M vexpress-a9
 dtb: %(dtb_base)s/vexpress-v2p-ca9.dtb
 initrd: %(tftproot)s/buildroot.cpio.gz
 bootargs: console=ttyAMA0
 
 [vexpress-v2p-ca15]
-qemu: True
+qemu: qemu-system-arm
 qemu_args: -M vexpress-a15
-dtb: %(dtb_base)s/vexpress-v2p-ca9-tc1.dtb
+dtb: %(dtb_base)s/vexpress-v2p-ca15-tc1.dtb
+initrd: %(tftproot)s/buildroot.cpio.gz
 bootargs: console=ttyAMA0
 
+[qemu-aarch64]
+qemu: qemu-system-aarch64
+qemu_net_options: -net nic,model=virtio -net user
+qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s
+bootargs: console=ttyAMA0,115200
+initrd: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
+
+[zynq]
+loadaddr: 0x02000000
+dtb_addr: 0x02f00000
+initrd_addr: 0x03000000
+dtb: %(dtb_base)s/zynq-zc702.dtb
+initrd: %(tftproot)s/buildroot.cpio.gz
+bootargs: console=ttyPS0,115200 debug earlyprintk
 
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]

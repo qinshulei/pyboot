@@ -224,14 +224,13 @@ def connect_console():
         return
 
     if qemu:
-        qemu_cmd = "qemu-system-arm -nographic %s -kernel %s" %(qemu_args, kimage)
+        qemu_cmd = "%s -nographic %s -kernel %s" %(qemu, qemu_args, kimage)
         if dtb:
             qemu_cmd += " -dtb %s" %dtb
         if initrd:
             qemu_cmd += " -initrd %s" %initrd
         if bootargs:
-            qemu_cmd += " -append %s" %bootargs
-        progress("qemu: running: %s" %qemu_cmd)
+            qemu_cmd += " -append \"%s\"" %bootargs
         c = pexpect.spawn(qemu_cmd, timeout=30)
     else:
         conmux_board = board
@@ -255,17 +254,17 @@ def connect_console():
     if verbose:
         c.logfile_read = sys.stdout 
 
+    if qemu:
+        # QEMU goes directly to booting the kernel
+        progress("qemu: connected using: %s" %qemu_cmd, log=True)
+        return;
+
     i = c.expect(["Connected to", 
-                  "Booting Linux",
                   pexpect.TIMEOUT, pexpect.EOF])
     if i == 0:
         # connected normally
         pass
-    elif i == 1 and qemu:
-        # in qemu, kernel can directly start booting
-        pass
     else:
-        print "i = ", i
         raise Exception('ERROR: Unable to connect to console.  Giving up.', 'OFFLINE')
 
     c.sendline('')
@@ -484,11 +483,16 @@ def boot_kernel():
 def wait_for_kernel():
     global warnings
 
-    try:
-        c.expect(['Booting Linux',
-                  'Linux version'], timeout = 30)
-    except pexpect.TIMEOUT:
+    i = c.expect(['Booting Linux',
+                  'Linux version',
+                  pexpect.TIMEOUT, pexpect.EOF], timeout = 30)
+    if i == 0 or i == 1:
+        # normal booting
+        pass
+    if i == 2:
         raise Exception('kernel: ERROR: did not start booting.')
+    if i == 3:
+        raise Exception('console: error connecting with console/qemu.', 'OFFLINE')
 
     progress('kernel: started booting.')
 
@@ -808,7 +812,7 @@ bootargs = None
 warnings = 0
 boot_meta = {}
 custom_boot = False
-qemu = False
+qemu = None
 qemu_args = None
 conmux_host = None
 
@@ -852,7 +856,7 @@ if config.has_option(section, 'post_reset_ctrl'):
 if config.has_option(section, 'bootargs'):
     bootargs = config.get(section, 'bootargs')
 if config.has_option(section, 'qemu'):
-    qemu = config.getboolean(section, 'qemu')
+    qemu = config.get(section, 'qemu')
 if qemu:
     if config.has_option(section, "qemu_args"):
         qemu_args = config.get(section, 'qemu_args')
