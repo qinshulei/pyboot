@@ -947,6 +947,8 @@ if endian == "big":
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
 if dtb and bootargs:
+    if cmdline_append:
+        bootargs = bootargs + " " + cmdline_append
     dtb = dtb_insert_cmdline(dtb, bootargs)
 
 if dtb and dtb_append:
