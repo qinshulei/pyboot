@@ -543,19 +543,22 @@ def root_shell():
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
     ]
-    i = c.expect(pl, timeout=120)
-    if i == 0:
-        pass
-    elif i == 1:
-        command('\n')
-    elif i == 2:
-        raise Exception('userspace: ERROR: Never found root shell')
-    elif i == 4:
-        warnings += 1
-        msg = c.match.group(0)
-        progress('kernel: %s' %msg, log=True)
-    else:
-        raise Exception('userspace: failed to find root shell: %s' %pl[i])
+    done = False
+    while not done:
+        i = c.expect(pl, timeout=120)
+        if i == 0:
+            done = True
+        elif i == 1:
+            command('\n')
+            done = True
+        elif i == 2:
+            raise Exception('userspace: ERROR: Timeout waiting for root shell')
+        elif i == 4:
+            warnings += 1
+            msg = c.match.group(0)
+            progress('kernel: %s' %msg, log=True)
+        else:
+            raise Exception('userspace: failed to find root shell: %s' %pl[i])
     
     progress("userspace: at root shell", log=True)
 
