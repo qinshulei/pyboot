@@ -579,6 +579,9 @@ def userspace_info():
         if match:
             progress('userspace: Hardware: %s' %match.group(1))
 
+    if modules:
+        command('lsmod')
+
 def check_errors_warnings():
     # FIXME: these commands are sometimes causing problems when interacting with late output
     #        kernel messgages (like USB devices appearing on mirabox.)  To prevent
@@ -712,6 +715,39 @@ def initrd_add_uboot_header(initrd):
     else:
         raise Exception("Unable to add u-boot header to initrd %s" %initrd)
 
+def initrd_insert_modules(initrd, modules):
+    initrd_tmpdir = tempfile.mkdtemp(prefix="initrd-")
+    temp_files.append(initrd_tmpdir)
+    fd, initrd_new = tempfile.mkstemp(prefix="initrd-", suffix=".cpio")
+
+    # extract ramdisk into tmp dir
+    if initrd.endswith(".cpio"):
+        cat_cmd = "cat"
+    elif initrd.endswith(".cpio.gz"):
+        cat_cmd = "zcat"
+    else:
+        return None
+
+    cmd = "cd %s && %s %s | fakeroot cpio --extract --quiet" %(initrd_tmpdir, cat_cmd, initrd)
+    print cmd
+    subprocess.call(cmd, shell=True)
+
+    # unpack modules into tmp dir
+    cmd = "tar -C %s -xaf %s" %(initrd_tmpdir, modules)
+    subprocess.call(cmd, shell=True)
+
+    # (re)create ramdisk
+    cmd = "cd %s && find . | fakeroot cpio --create --quiet --format='newc' > %s" %(initrd_tmpdir, initrd_new)
+    subprocess.call(cmd, shell=True)
+    subprocess.call("gzip %s" %initrd_new, shell=True)
+    initrd_new += ".gz"
+    os.chmod(initrd_new, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    print "initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new)
+    temp_files.append(initrd_new)
+
+    return initrd_new
+
 def zimage_hack_endian(kimage):
     zimage_magic_offset = 0x24
     zimage_magic = 0x016f2818
@@ -746,11 +782,12 @@ run_tests = False
 check_warnings = False
 dhcp = True
 dtb_append = False
+modules = None
 
 temp_files = []
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:qstu:vwy")
+    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:m:qstu:vwy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -771,6 +808,8 @@ for o, a in opts:
         interact = True
     elif o == "-l":
         logfile = a
+    elif o == "-m":
+        modules = a
     elif o == "-s":
         shutdown = True
     elif o == "-q":
@@ -912,6 +951,10 @@ if initrd:
             initrd_addr = config.get(section, 'initrd_addr')
         else:
             initrd_addr = ""
+
+    if initrd and modules:
+        initrd = initrd_insert_modules(initrd, modules)
+        initrd_size = os.path.getsize(initrd)
 
     boot_meta["initrd"] = initrd
     boot_meta["initrd_addr"] = initrd_addr
@@ -1061,5 +1104,8 @@ finally:
 
     tftp_cleanup()
     for f in temp_files:
-        if (os.path.exists(f)):
-            os.unlink(f)
+        if os.path.exists(f):
+            if os.path.isdir(f):
+                shutil.rmtree(f)
+            else:
+                os.remove(f)
