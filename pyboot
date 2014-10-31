@@ -729,7 +729,6 @@ def initrd_insert_modules(initrd, modules):
         return None
 
     cmd = "cd %s && %s %s | fakeroot cpio --extract --quiet" %(initrd_tmpdir, cat_cmd, initrd)
-    print cmd
     subprocess.call(cmd, shell=True)
 
     # unpack modules into tmp dir
