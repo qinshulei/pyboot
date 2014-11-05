@@ -405,7 +405,11 @@ def fastboot_image(kernel, dtb, initrd):
 
     # The rest of the fastboot magic here is hidden by conmux
     progress('fastboot: loading %s, %s, %s' % (kernel, dtb, initrd), log=True)
-    c.sendline('~$fastboot %s %s %s' % (kernel, dtb, initrd))
+    cmd = "~$fastboot"
+    if serverip:
+        cmd += " -t %s" %serverip
+    cmd += " %s %s %s" % (kernel, dtb, initrd)
+    c.sendline(cmd)
 
 def load_image(file, addr):
     global prompt
