@@ -747,6 +747,22 @@ def initrd_insert_modules(initrd, modules):
 
     return initrd_new
 
+def zimage_is_big_endian(kimage):
+    """Check zImage big-endian magic number"""
+    magic_offset = 0x30
+    setend_be = 0xf1010200
+    setend_be_thumb = 0xb658
+
+    fp = open(kimage, "r")
+    fp.seek(magic_offset)
+    val = struct.unpack("=L", fp.read(4))[0]
+    fp.seek(magic_offset)
+    val16 = struct.unpack("<H", fp.read(2))[0]
+    fp.close()
+    if (val == 0x01020304) or (val == setend_be):
+        return True
+    return False
+
 def zimage_hack_endian(kimage):
     zimage_magic_offset = 0x24
     zimage_magic = 0x016f2818
@@ -963,11 +979,9 @@ if not initrd:
 
 # Check endianness of zImage
 endian = "little"
-out = subprocess.check_output("file %s" %kimage, shell=True).strip()
-f, magic = out.split(":", 1)
-m = re.search(".*\((\w+)-endian\)", magic)
-if m:
-    endian = m.group(1)
+if zimage_is_big_endian(kimage):
+    endian = "big"
+
 boot_meta["endian"] = endian
 boot_meta["fastboot"] = fastboot
 boot_meta["fastboot_cmd"] = fastboot_cmd
@@ -989,9 +1003,6 @@ if not quiet:
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
-
-if endian == "big":
-    kimage = zimage_hack_endian(kimage)
 
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
