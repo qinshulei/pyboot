@@ -363,7 +363,11 @@ def init_uboot_env():
             # netboot method
             if key == "bootcmd":
                 custom_boot = True
-
+        
+        # if bootargs is set outside of uboot_env, it overrides this one
+        if bootargs:
+            command('setenv bootargs %s' %bootargs)
+        
     command('if test -n ${initenv}; then run initenv; fi')
     command('if test -n ${preboot}; then run preboot; fi')
 
@@ -866,7 +870,7 @@ uboot_early = None
 post_reset_ctrl = None
 log_prefix = 'boot-%s' %board
 if not logfile:
-    logfile = "%s.log" %log_prefix
+    logfile = "%s.txt" %log_prefix
 start_time = 0
 boot_time = 0
 fastboot = False
