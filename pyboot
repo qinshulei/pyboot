@@ -106,11 +106,13 @@ def create_uimage(zimg, addr_str):
             text_offset = '0x' + virt_text.replace('c', '0')
             addr = int(text_offset, 16)
             entry = addr
-            print "uImage: determined load address (0x%08x) from %s." %(addr, system_map)
+            if not quiet:
+                print "uImage: determined load address (0x%08x) from %s." %(addr, system_map)
         elif addr_str == "xip":
             addr = int(loadaddr, 16)
             entry = addr + 64
-            print "uImage: XIP mode: Setting uImage load addr to TFTP load addr 0x%08x (and entry point +64b)" %(addr)
+            if not quiet:
+                print "uImage: XIP mode: Setting uImage load addr to TFTP load addr 0x%08x (and entry point +64b)" %(addr)
         else:
             addr = uimage_addr_default
             entry = addr
@@ -676,7 +678,8 @@ def dtb_insert_initrd(dtb, initrd_addr):
     os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "DTB: modified for initrd: %s" %dtb_modified
+    if not quiet:
+        print "DTB: modified for initrd: %s" %dtb_modified
     return dtb_modified
 
 def dtb_insert_cmdline(dtb, cmdline):
@@ -703,7 +706,8 @@ def dtb_insert_cmdline(dtb, cmdline):
     os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "DTB: modified with bootargs: %s.\n" %bootargs,
+    if not quiet:
+        print "DTB: modified with bootargs: %s.\n" %bootargs,
     return dtb_modified
 
 
@@ -716,7 +720,8 @@ def initrd_add_uboot_header(initrd):
     cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
     if os.path.exists(initrd_uboot_tmp):
-        print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp)
+        if not quiet:
+            print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp)
         os.chmod(initrd_uboot_tmp, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
         initrd_size = os.path.getsize(initrd_uboot_tmp)
         return initrd_uboot_tmp
