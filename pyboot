@@ -320,10 +320,10 @@ def boot_to_uboot():
             continue
         elif i == 2:
             progress('u-boot: fastboot mode detected.')
-            return
+            return False
         elif i == 3:
             progress('u-boot: Nokia OMAP Loader (NOLO) detected.')
-            return
+            return False
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
@@ -339,6 +339,8 @@ def boot_to_uboot():
     prompt = c.match.group(0)
     if prompt.endswith('$'):
         prompt = prompt[:-1] + "\$"
+
+    return True
 
 def init_uboot_env():
     """ Initialize default u-boot env, including values from config file."""
@@ -1052,8 +1054,8 @@ if not qemu:
 try:
     connect_console()
     if not qemu:
-        boot_to_uboot()
-        init_uboot_env()
+        if boot_to_uboot():
+            init_uboot_env()
 
     if fastboot:
         fastboot_image(kimage, dtb, initrd)
