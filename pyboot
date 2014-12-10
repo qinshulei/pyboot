@@ -24,7 +24,6 @@
 # TODO:
 # - generalize bootargs: set by inserting into DTB, not only u-boot env
 #   - needs to handle current post-dhcp init (via netargs)
-# - add locking support for mutual exclusion.  If locked, report BUSY instead of OFFLINE
 # - instrument kernel backtraces for easy logging/coloring
 # - add 'console_host' option in config file for conmux
 #
@@ -41,6 +40,7 @@ import subprocess
 import ConfigParser
 import json
 import struct
+import fcntl
 
 def usage():
     name = os.path.basename(sys.argv[0])
@@ -757,7 +757,8 @@ def initrd_insert_modules(initrd, modules):
     initrd_new += ".gz"
     os.chmod(initrd_new, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    print "initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new)
+    if not debug:
+        print "initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new)
     temp_files.append(initrd_new)
 
     return initrd_new
@@ -836,6 +837,8 @@ for o, a in opts:
         sys.exit(0)
     elif o == "-i":
         interact = True
+    elif o == "-k":
+        locking = False
     elif o == "-l":
         logfile = a
     elif o == "-m":
@@ -889,6 +892,7 @@ custom_boot = False
 qemu = None
 qemu_args = None
 conmux_host = None
+locking = True
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -1051,6 +1055,13 @@ if not qemu:
     if initrd:
         initrd = tftp_relpath(initrd)
 
+lock_fp = lock_fd = None
+if locking:
+    lockfile = os.path.join(tempfile.gettempdir(), "pyboot-%s.lock" %board)
+    lock_fp = open(lockfile, "w")
+    lock_fd = lock_fp.fileno()
+    fcntl.lockf(lock_fd, fcntl.LOCK_EX)
+
 try:
     connect_console()
     if not qemu:
@@ -1122,6 +1133,10 @@ except Exception as e:
 finally:
     if c.logfile:
         c.logfile.close()
+
+    if locking and lock_fd:
+        fcntl.lockf(lock_fd, fcntl.LOCK_UN)
+        lock_fp.close()
 
     # remove non-printable chars (and \r) from temp output log, and save to final location
     cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
