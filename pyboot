@@ -814,11 +814,13 @@ check_warnings = False
 dhcp = True
 dtb_append = False
 modules = None
-
+build_json_file = None
 temp_files = []
+lab_name = None
+board_name = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ac:dhil:m:qstu:vwy")
+    opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:n:qstu:vwy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -826,6 +828,8 @@ except getopt.GetoptError as err:
 for o, a in opts:
     if o == "-a":
         dtb_append = True
+    if o == "-b":
+        build_json_file = a
     elif o == "-c":
         cmdline_append = a
     elif o == "-d":
@@ -841,8 +845,12 @@ for o, a in opts:
         locking = False
     elif o == "-l":
         logfile = a
+    elif o == "-L":
+        lab_name = a
     elif o == "-m":
         modules = a
+    elif o == "-n":
+        board_name = a
     elif o == "-s":
         shutdown = True
     elif o == "-q":
@@ -863,7 +871,9 @@ if len(args) < 1:
     usage()
     sys.exit(1)
 
-board = args[0]
+board = args[0]  # conmux console name
+if not board_name:
+    board_name = board # used for boot JSON board name
 tftproot = '/tftpboot'
 tftpdir = None
 serverip = None
@@ -878,7 +888,7 @@ initrd_uboot = None
 uboot_env = None
 uboot_early = None
 post_reset_ctrl = None
-log_prefix = 'boot-%s' %board
+log_prefix = 'boot-%s' %board_name
 if not logfile:
     logfile = "%s.txt" %log_prefix
 start_time = 0
@@ -950,6 +960,21 @@ if len(args) > 2:
 if len(args) > 3:
     initrd = args[3]
 
+boot_meta["version"] = "1.0"
+boot_meta["board"] = board_name
+if lab_name:
+    boot_meta["lab_name"] = lab_name
+
+# if build JSON is present, extract some fields for use in the boot JSON
+if build_json_file:
+    fp = open(build_json_file, "r")
+    build_meta = json.load(fp)
+    fp.close()
+    boot_meta["arch"] = build_meta.get("arch", None)
+    boot_meta["job"] = build_meta.get("job", "unknown")
+    boot_meta["kernel"] = build_meta.get("git_describe", None)
+    boot_meta["defconfig"] = build_meta.get("defconfig", None)
+
 (kimage, loadaddr) = path_addr_split(kimage)
 if not loadaddr:
     if config.has_option(section, 'loadaddr'):
@@ -1003,7 +1028,8 @@ if zimage_is_big_endian(kimage):
 
 boot_meta["endian"] = endian
 boot_meta["fastboot"] = fastboot
-boot_meta["fastboot_cmd"] = fastboot_cmd
+if fastboot:
+    boot_meta["fastboot_cmd"] = fastboot_cmd
 if qemu:
     boot_meta["qemu"] = qemu
 
