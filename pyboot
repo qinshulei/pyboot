@@ -1037,7 +1037,7 @@ if dtb and dtb_append:
 
 if convert_uimage:
     kimage = create_uimage(kimage, uimage_addr)
-    boot_meta["uImage"] = True
+    boot_meta["uimage"] = True
     boot_meta["uimage_addr"] = uimage_addr
 
 if not qemu:
