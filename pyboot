@@ -1150,7 +1150,7 @@ except Exception as e:
     if c.logfile:
         c.logfile.write('# PYBOOT: Exception: %s\n' %e)
 
-    boot_json["boot_result_description"] = %e
+    boot_json["boot_result_description"] = "%s" %e
     # e.args[0] is message, e.args[1] (if present) is result code
     if len(e.args) > 1:
         do_report(1, e.args[1])  # pass result 
