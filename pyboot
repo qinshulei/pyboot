@@ -195,6 +195,13 @@ def do_report(retval=0, result=None):
     # Create JSON format boot metadata
     json_file, ext = os.path.splitext(logfile)
     json_file += ".json"
+    if os.path.exists(json_file):
+        boot_json_f = open(json_file, 'r')
+        prev_boot_meta = json.load(boot_json_f)
+        boot_retries = prev_boot_meta.get("boot_retries", 0)
+        boot_json_f.close()
+        boot_meta["boot_retries"] = boot_retries + 1
+
     boot_json_f = open(json_file, 'w')
     json.dump(boot_meta, boot_json_f, indent=4, sort_keys=True)
     boot_json_f.close()
