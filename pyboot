@@ -994,11 +994,6 @@ if build_json_file:
         boot_meta["job"] = job
 
     defconfig_full = build_meta.get("defconfig_full", None)
-    kconfig_fragments = build_meta.get("kconfig_fragments", None)
-    if not defconfig_full and kconfig_fragments:
-        frag_base, frag_ext = os.path.splitext(kconfig_fragments)
-        defconfig_full = frag_base[5:] # drop the "frag-" prefix
-
     if defconfig_full:
         boot_meta["defconfig_full"] = defconfig_full
 
