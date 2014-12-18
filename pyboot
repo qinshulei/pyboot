@@ -997,7 +997,6 @@ if build_json_file:
     kconfig_fragments = build_meta.get("kconfig_fragments", None)
     if not defconfig_full and kconfig_fragments:
         frag_base, frag_ext = os.path.splitext(kconfig_fragments)
-        print "KJH: kconfig fragments", kconfig_fragments, frag_base, frag_ext
         defconfig_full = frag_base[5:] # drop the "frag-" prefix
 
     if defconfig_full:
