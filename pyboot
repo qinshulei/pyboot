@@ -202,6 +202,9 @@ def do_report(retval=0, result=None):
         boot_json_f.close()
         boot_meta["boot_retries"] = boot_retries + 1
 
+    json_base = os.path.dirname(json_file)
+    if not os.path.exists(json_base):
+        os.mkdir(json_base)
     boot_json_f = open(json_file, 'w')
     json.dump(boot_meta, boot_json_f, indent=4, sort_keys=True)
     boot_json_f.close()
@@ -444,7 +447,9 @@ def load_image(file, addr):
                       pexpect.TIMEOUT],
                      timeout=30)
         if (i == 0):
-            c.expect(prompt)
+            j = c.expect([prompt, pexpect.TIMEOUT])
+            if j != 0:
+                raise Exception("u-boot: ERROR: No prompt after TFTP transfer")
             break
         elif (i == 1):
             raise Exception('ERROR: TFTP error.')
@@ -459,7 +464,9 @@ def load_image(file, addr):
             if retries:
                 progress('u-boot: timeout loading %s, Trying again.' %file, log=True)
                 c.send('\003')  # Ctrl-C: abort current tftp
-                c.expect(prompt)
+                j = c.expect([prompt, pexpect.TIMEOUT])
+                if j != 0:
+                    raise Exception("u-boot: ERROR: No prompt after interrupting TFTP.")
             else:
                 raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
 
@@ -545,6 +552,8 @@ def wait_for_kernel():
             msg = c.match.group(0)
             progress("kernel: %s" %msg, log=True)
             continue
+        elif i == 7:
+            raise Exception("kernel: ERROR: Timeout waiting for kernel to finish booting.")
         else:
             raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
 
@@ -978,9 +987,21 @@ if build_json_file:
     build_meta = json.load(fp)
     fp.close()
     boot_meta["arch"] = build_meta.get("arch", None)
-    boot_meta["job"] = build_meta.get("job", "unknown")
     boot_meta["kernel"] = build_meta.get("git_describe", None)
     boot_meta["defconfig"] = build_meta.get("defconfig", None)
+    job = build_meta.get("job", None)
+    if job:
+        boot_meta["job"] = job
+
+    defconfig_full = build_meta.get("defconfig_full", None)
+    kconfig_fragments = build_meta.get("kconfig_fragments", None)
+    if not defconfig_full and kconfig_fragments:
+        frag_base, frag_ext = os.path.splitext(kconfig_fragments)
+        print "KJH: kconfig fragments", kconfig_fragments, frag_base, frag_ext
+        defconfig_full = frag_base[5:] # drop the "frag-" prefix
+
+    if defconfig_full:
+        boot_meta["defconfig_full"] = defconfig_full
 
 (kimage, loadaddr) = path_addr_split(kimage)
 if not loadaddr:
@@ -1157,7 +1178,8 @@ except Exception as e:
     if c.logfile:
         c.logfile.write('# PYBOOT: Exception: %s\n' %e)
 
-    boot_meta["boot_result_description"] = "%s" %e
+    boot_result_description = "%s" %e
+    boot_meta["boot_result_description"] = boot_result_description.rstrip()
     # e.args[0] is message, e.args[1] (if present) is result code
     if len(e.args) > 1:
         do_report(1, e.args[1])  # pass result 
@@ -1173,6 +1195,9 @@ finally:
         lock_fp.close()
 
     # remove non-printable chars (and \r) from temp output log, and save to final location
+    log_base = os.path.dirname(logfile)
+    if not os.path.exists(log_base):
+        os.mkdir(log_base)
     cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
     subprocess.call(cmd, shell=True)
 
