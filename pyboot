@@ -26,6 +26,7 @@
 #   - needs to handle current post-dhcp init (via netargs)
 # - instrument kernel backtraces for easy logging/coloring
 # - add 'console_host' option in config file for conmux
+# - support arch, mach, lab-name, etc. from ~/.pyboot 
 #
 import os
 import sys
@@ -834,9 +835,10 @@ build_json_file = None
 temp_files = []
 lab_name = None
 board_name = None
+mach = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:n:qstu:vwy")
+    opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:M:n:qstu:vwy")
 
 except getopt.GetoptError as err:
     print str(err) # will print something like "option -a not recognized"
@@ -865,6 +867,8 @@ for o, a in opts:
         lab_name = a
     elif o == "-m":
         modules = a
+    elif o == "-M":
+        mach = a
     elif o == "-n":
         board_name = a
     elif o == "-s":
@@ -980,6 +984,8 @@ boot_meta["version"] = "1.0"
 boot_meta["board"] = board_name
 if lab_name:
     boot_meta["lab_name"] = lab_name
+if mach:
+    boot_meta["mach"] = mach
 
 # if build JSON is present, extract some fields for use in the boot JSON
 if build_json_file:
@@ -996,6 +1002,7 @@ if build_json_file:
     defconfig_full = build_meta.get("defconfig_full", None)
     if defconfig_full:
         boot_meta["defconfig_full"] = defconfig_full
+
 
 (kimage, loadaddr) = path_addr_split(kimage)
 if not loadaddr:
