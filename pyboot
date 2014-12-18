@@ -204,7 +204,7 @@ def do_report(retval=0, result=None):
         boot_meta["boot_retries"] = boot_retries + 1
 
     json_base = os.path.dirname(json_file)
-    if not os.path.exists(json_base):
+    if json_base and not os.path.exists(json_base):
         os.mkdir(json_base)
     boot_json_f = open(json_file, 'w')
     json.dump(boot_meta, boot_json_f, indent=4, sort_keys=True)
@@ -1197,7 +1197,7 @@ finally:
 
     # remove non-printable chars (and \r) from temp output log, and save to final location
     log_base = os.path.dirname(logfile)
-    if not os.path.exists(log_base):
+    if log_base and not os.path.exists(log_base):
         os.mkdir(log_base)
     cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
     subprocess.call(cmd, shell=True)
