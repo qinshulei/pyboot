@@ -320,7 +320,7 @@ def boot_to_uboot():
 
         # Break into u-boot
         i = c.expect(['stop autoboot:',
-                      'HELLO! BOOT0 is starting',
+                      'BOOT0 is starting',
                       'fastboot: processing commands',
                       'Nokia OMAP Loader',
                       pexpect.TIMEOUT])
