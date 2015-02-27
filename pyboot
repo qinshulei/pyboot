@@ -165,9 +165,24 @@ def tftp_cleanup():
         shutil.rmtree(tftpdir)
         tftpdir = None
 
+def time_start(key):
+    global timings
+
+    if not timings.has_key(key):
+        timings[key] = [-1, -1]
+
+    timings[key][0] = time.time()
+
+def time_stop(key):
+    timings[key][1] = time.time()
+
+def time_diff(key):
+    return timings[key][1] - timings[key][0]
+
 def do_report(retval=0, result=None):
     global start_time, c, boot_meta
 
+    time_stop('total')
     boot_time = time.time() - start_time
     if not result:
         if retval:
@@ -188,6 +203,10 @@ def do_report(retval=0, result=None):
             c.logfile.write("# PYBOOT: Warnings: %d\n" %warnings)
         c.logfile.write("# PYBOOT: Result: %s\n" %result)
 
+    if timings.has_key('kernel'):
+        boot_time = round(time_diff('kernel'), 2)
+    else:
+        boot_time = 0
     boot_meta["boot_time"] = round(boot_time, 2)
     boot_meta["boot_result"] = result
     boot_meta["boot_warnings"] = warnings
@@ -522,6 +541,7 @@ def wait_for_kernel():
     if i == 3:
         raise Exception('console: error connecting with console/qemu.', 'OFFLINE')
 
+    time_start('kernel')
     progress('kernel: started booting.')
 
     # Look for end of kernel boot, or various failures
@@ -558,6 +578,7 @@ def wait_for_kernel():
         else:
             raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
 
+    time_stop('kernel')
     progress('kernel: finished booting, starting userspace.', log=True)
 
 def root_shell():
@@ -923,6 +944,7 @@ qemu = None
 qemu_args = None
 conmux_host = None
 locking = True
+timings = {}
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -1077,6 +1099,7 @@ if not quiet:
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
+time_start('total')
 
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
