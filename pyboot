@@ -190,18 +190,17 @@ def do_report(retval=0, result=None):
         else:
             result = 'PASS'
     
+    
+    report = "# PYBOOT: Time: %.2f seconds.\n" %boot_time
+    if warnings:
+        report += "# PYBOOT: Warnings: %d\n" %warnings
+    report += "# PYBOOT: Result: %s\n" %result
     if not quiet:
-        print "# PYBOOT: Time: %.2f" %boot_time
-        if warnings:
-            print "# PYBOOT: Warnings: %d" %warnings
-        print "# PYBOOT: Result: %s" %result
+        print report
 
     if c.logfile:
         c.logfile.flush()
-        c.logfile.write("# PYBOOT: Time: %.2f seconds.\n" %boot_time)
-        if warnings:
-            c.logfile.write("# PYBOOT: Warnings: %d\n" %warnings)
-        c.logfile.write("# PYBOOT: Result: %s\n" %result)
+        c.logfile.write(report)
 
     if timings.has_key('kernel'):
         boot_time = round(time_diff('kernel'), 2)
