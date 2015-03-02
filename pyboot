@@ -169,7 +169,7 @@ def time_start(key):
     global timings
 
     if not timings.has_key(key):
-        timings[key] = [-1, -1]
+        timings[key] = [0, 0]
 
     timings[key][0] = time.time()
 
@@ -177,7 +177,10 @@ def time_stop(key):
     timings[key][1] = time.time()
 
 def time_diff(key):
-    return timings[key][1] - timings[key][0]
+    diff = timings[key][1] - timings[key][0]
+    if diff < 0:
+        diff = 0
+    return diff
 
 def do_report(retval=0, result=None):
     global start_time, c, boot_meta
