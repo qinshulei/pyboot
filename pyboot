@@ -42,6 +42,7 @@ import ConfigParser
 import json
 import struct
 import fcntl
+import operator
 
 def usage():
     name = os.path.basename(sys.argv[0])
@@ -169,18 +170,19 @@ def time_start(key):
     global timings
 
     if not timings.has_key(key):
-        timings[key] = [0, 0]
+        timings[key] = [0, 0, 0]
 
     timings[key][0] = time.time()
 
 def time_stop(key):
     timings[key][1] = time.time()
-
-def time_diff(key):
     diff = timings[key][1] - timings[key][0]
     if diff < 0:
         diff = 0
-    return diff
+    timings[key][2] = diff
+
+def time_diff(key):
+    return timings[key][2]
 
 def do_report(retval=0, result=None):
     global start_time, c, boot_meta
@@ -192,9 +194,18 @@ def do_report(retval=0, result=None):
         else:
             result = 'PASS'
 
+    # sort by total time
+    timings_sorted = sorted(timings.items(), key=lambda x: x[1][2], reverse=True)
+
     report = ""
-    for key in timings:
-        report += "# PYBOOT: Timing: %s: %.2f\n" %(key, time_diff(key))
+    if timings.has_key('total'):
+        report += "# PYBOOT: Time: %.2f" %time_diff('total')
+    report += " ("
+    for i, t in enumerate(timings_sorted[1:]):
+        report += "%s: %.2f" %(t[0], t[1][2])
+        if i < len(timings_sorted) - 2:
+            report += ", "
+    report += ")\n"
     if warnings:
         report += "# PYBOOT: Warnings: %d\n" %warnings
     report += "# PYBOOT: Result: %s\n" %result
@@ -1098,6 +1109,7 @@ if not quiet:
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
 time_start('total')
+time_start('setup')
 
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
@@ -1140,11 +1152,13 @@ if locking:
 
 try:
     connect_console()
+    time_stop('setup')
+
+    time_start('bootloader')
     if not qemu:
         if boot_to_uboot():
             init_uboot_env()
 
-    time_start('bootloader')
     if fastboot:
         fastboot_image(kimage, dtb, initrd)
     elif custom_boot:
