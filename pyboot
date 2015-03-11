@@ -1146,11 +1146,18 @@ if not qemu:
 lock_fp = lock_fd = None
 if locking:
     lockfile = os.path.join(tempfile.gettempdir(), "pyboot-%s.lock" %board)
-    lock_fp = open(lockfile, "w")
+    if os.path.exists(lockfile):
+        lock_fp = open(lockfile, "w")
+    else:
+        lock_fp = open(lockfile, "w")
+        os.chmod(lockfile, stat.S_IRUSR | stat.S_IWUSR | 
+                 stat.S_IRGRP | stat.S_IWGRP |
+                 stat.S_IROTH | stat.S_IWOTH)
+
     lock_fd = lock_fp.fileno()
-    fcntl.lockf(lock_fd, fcntl.LOCK_EX)
 
 try:
+    fcntl.lockf(lock_fd, fcntl.LOCK_EX)
     connect_console()
     time_stop('setup')
 
