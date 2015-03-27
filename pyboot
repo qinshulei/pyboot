@@ -14,8 +14,9 @@
 #
 # Reads config file from /etc/pyboot.conf, $PWD/.pyboot and ~/.pyboot
 #
-# Author: Kevin Hilman <khilman@kernel.org>
-# - with significant early contributions from Olof Johansson <olof@lixom.net>
+# Authors: 
+#   Olof Johansson <olof@lixom.net>
+#   Kevin Hilman <khilman@kernel.org>
 #
 # This file is licensed under the terms of the GNU General Public
 # License version 2. This program is licensed "as is" without any
