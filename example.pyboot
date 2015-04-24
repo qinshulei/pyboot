@@ -548,11 +548,11 @@ bootargs: console=ttyAMA0
 [qemu-aarch64]
 arch: arm64
 image: %(basedir)s/Image
-qemu: /home/khilman/work/platforms/qemu/aarch64-softmmu/qemu-system-aarch64
+qemu: qemu-system-aarch64
 # Use 'tap' for bridged neworking (requires sudo)
 qemu_net: user
 qemu_net_options: -device virtio-net-device,vlan=0,id=net0 -net %(qemu_net)s
-qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s -bios /tmp/QEMU_EFI.fd
+qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s
 bootargs: console=ttyAMA0,115200
 initrd: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
 
