@@ -546,10 +546,13 @@ initrd: %(tftproot)s/buildroot.cpio.gz
 bootargs: console=ttyAMA0
 
 [qemu-aarch64]
-qemu: qemu-system-aarch64
-qemu_net_options: -net nic,model=virtio -net user
-qemu_kvm_options: -enable-kvm -smp cpus=4
-qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s 
+arch: arm64
+image: %(basedir)s/Image
+qemu: /home/khilman/work/platforms/qemu/aarch64-softmmu/qemu-system-aarch64
+# Use 'tap' for bridged neworking (requires sudo)
+qemu_net: user
+qemu_net_options: -device virtio-net-device,vlan=0,id=net0 -net %(qemu_net)s
+qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s -bios /tmp/QEMU_EFI.fd
 bootargs: console=ttyAMA0,115200
 initrd: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
 
