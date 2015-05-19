@@ -170,12 +170,14 @@ def tftp_cleanup():
 def time_start(key):
     global timings
 
+#    print "KJH: time_start", key
     if not timings.has_key(key):
         timings[key] = [0, 0, 0]
 
     timings[key][0] = time.time()
 
 def time_stop(key):
+#    print "KJH: time_stop", key
     timings[key][1] = time.time()
     diff = timings[key][1] - timings[key][0]
     if diff < 0:
@@ -263,6 +265,7 @@ def connect_console():
     """ Spawn and connect to serial console (via conmux). """
     global c, verbose, exp_logfile
     global kimage, dtb, initrd
+    global fvp, fvp_proc
 
     if dry_run:
         c = dummy_expect()
@@ -278,11 +281,42 @@ def connect_console():
             qemu_cmd += " -append \"%s\"" %bootargs
         boot_meta["qemu_command"] = qemu_cmd
         c = pexpect.spawn(qemu_cmd, timeout=30)
+    elif fvp:
+        cwd = os.getcwd()
+        os.chdir(tftpdir)
+
+        # Create default EFI startup script "startup.nsh" 
+
+        efi_startup = open("startup.nsh", "w")
+        # NOTE: need to pass bootargs at the EFI shell commandline, it doesn't seem to
+        #       work even when it's inserted into the DTB
+        efi_startup_cmd = "%s dtb=%s initrd=%s %s\n" % (
+            os.path.basename(kimage), os.path.basename(dtb), os.path.basename(initrd), bootargs)
+        efi_startup.write(efi_startup_cmd)
+        efi_startup.close()
+                       
+        fvp_cmd = "%s %s" % (fvp, fvp_args)
+        boot_meta["fvp_command"] = fvp_cmd
+
+        os.environ.pop("DISPLAY")  # prevent the GUI window from popping up
+        fvp_proc = subprocess.Popen("exec " + fvp_cmd, shell=True)
+        telnet_port = 5000
+#        c_fvp = pexpect.spawn(fvp_cmd)
+#        fd, fvp_logfile = tempfile.mkstemp(prefix="fvp-log-")
+#        c_fvp.logfile = open(fvp_logfile, "w")
+#        temp_files.append(fvp_logfile)
+#        c_fvp.expect("Listening for serial connection on port (\d+)")
+#        telnet_port = int(c_fvp.match.group(1))
+        progress("FVP: connecting to console on localhost port %d" % telnet_port)
+        time.sleep(2)
+        c = pexpect.spawn("telnet localhost %d" % telnet_port, timeout=30)
+        os.chdir(cwd)
     else:
         conmux_board = board
         if conmux_host:
             conmux_board = "%s/%s" %(conmux_host, board)
         c = pexpect.spawn("conmux-console %s" %(conmux_board), timeout=30)
+
     try:
         fd, exp_logfile = tempfile.mkstemp(prefix="conmux-log-")
         temp_files.append(exp_logfile)
@@ -315,10 +349,22 @@ def connect_console():
 
     c.sendline('')
     progress('console: connected.', log=True)
+    if fvp:
+        c.sendcontrol("]")
+        c.expect("telnet>")
+        c.sendline("mode character")
 
 def sendline(str):
     global c
-    c.sendline(str)
+#    c.sendline(str)
+#    return
+
+    if fvp:
+        for ch in str:
+            c.send(ch)
+        c.send('\r')
+    else:
+        c.sendline(str)
 
 def command(str, exp=None, timeout=-1):
     global prompt
@@ -327,12 +373,17 @@ def command(str, exp=None, timeout=-1):
         progress('cmd: %s' % str)
     sendline(str)
     i = c.expect([exp or prompt, 
+                  "Kernel panic",
+                  'Unable to handle kernel (.*)\r\n',
                   pexpect.EOF,
                   pexpect.TIMEOUT], timeout=timeout)
     if i == 0:
         pass
     elif i == 1:
         raise Exception("ERROR: console: unexpectedly disconnected.")
+    elif i == 2 or i == 3:
+        msg = c.match.group(0)
+        raise Exception("kernel: %s" %msg)
     else:
         raise Exception("ERROR: Timeout waiting for command: %s." %str)
 
@@ -341,7 +392,8 @@ def boot_to_uboot():
     
     breakin = False
     while not breakin:
-        c.sendline('~$hardreset')
+        if not fvp:
+            c.sendline('~$hardreset')
 
         # Send "post_reset_ctrl" character as a control character right after reset
         if post_reset_ctrl:
@@ -355,6 +407,7 @@ def boot_to_uboot():
                       'BOOT0 is starting',
                       'fastboot: processing commands',
                       'Nokia OMAP Loader',
+                      'The default boot selection will start in',
                       pexpect.TIMEOUT])
         if i == 0:
             breakin = True
@@ -366,6 +419,23 @@ def boot_to_uboot():
             return False
         elif i == 3:
             progress('u-boot: Nokia OMAP Loader (NOLO) detected.')
+            return False
+        elif i == 4 and fvp:
+            # FIXME: set some UEFI=true flag here
+            progress('bootloader: found UEFI boot selection menu')
+            c.send('\r')
+            progress('bootloader: enter UEFI shell')
+            c.expect('Start:')
+            c.send('2')  # 2 == Enter EFI shell
+            c.send('\r')
+            progress('bootloader: waiting for UEFI shell')
+            c.expect('UEFI Interactive Shell', timeout=120)
+            progress('bootloader: UEFI shell started.')
+            c.expect("Press")
+            c.send('\n')
+            # Here it should start running startup.nsh 
+            c.expect("EFI stub: Booting Linux Kernel")
+            progress('bootloader: EFI stub: Booting kernel')
             return False
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
@@ -404,7 +474,8 @@ def init_uboot_env():
         uboot_vars = filter(None, uboot_vars) # remove empty items, blank lines...
         for var in uboot_vars:
             (key, val) = var.split('=', 1)
-            command('setenv %s %s' %(key, val))
+            if len(val):
+                command('setenv %s %s' %(key, val))
 
             # If 'bootcmd' is set, assume we shoudl use this instead of the standard
             # netboot method
@@ -415,8 +486,9 @@ def init_uboot_env():
         if bootargs:
             command('setenv bootargs %s' %bootargs)
         
-    command('if test -n ${initenv}; then run initenv; fi')
-    command('if test -n ${preboot}; then run preboot; fi')
+    if not custom_boot:
+        command('if test -n ${initenv}; then run initenv; fi')
+        command('if test -n ${preboot}; then run preboot; fi')
 
 def init_net():
     global prompt
@@ -542,10 +614,12 @@ def boot_kernel():
 
 def wait_for_kernel():
     global warnings
-
+    timeout = 30
+    if fvp:
+        timeout = 60
     i = c.expect(['Booting Linux',
                   'Linux version',
-                  pexpect.TIMEOUT, pexpect.EOF], timeout = 30)
+                  pexpect.TIMEOUT, pexpect.EOF], timeout = timeout)
     if i == 0 or i == 1:
         # normal booting
         pass
@@ -595,6 +669,9 @@ def wait_for_kernel():
 def root_shell():
     """ Wait for linux root shell. """
     global prompt, warnings
+    timeout = 120
+    if fvp:
+        timeout = 500
 
     # Wait for linux root shell
     prompt = "# "
@@ -606,7 +683,7 @@ def root_shell():
     ]
     done = False
     while not done:
-        i = c.expect(pl, timeout=120)
+        i = c.expect(pl, timeout=timeout)
         if i == 0:
             done = True
         elif i == 1:
@@ -695,7 +772,8 @@ def do_tests():
 
 def poweroff():
     global c
-    c.sendline('~$off')
+    if not fvp:
+        c.sendline('~$off')
 
 def dtb_insert_initrd(dtb, initrd_addr):
     """ Insert initrd start/end addresses into DTB.
@@ -955,8 +1033,13 @@ qemu_args = None
 conmux_host = None
 locking = True
 timings = {}
+fvp = None
+fvp_args = None
+fvp_uefi = None
+fvp_proc = None
 
-config = ConfigParser.ConfigParser()
+#config = ConfigParser.ConfigParser()
+config = ConfigParser.SafeConfigParser(os.environ)
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
 
 section = 'DEFAULT'
@@ -1004,6 +1087,16 @@ if qemu:
         qemu_args = config.get(section, 'qemu_args')
 if config.has_option(section, 'conmux_host'):
     conmux_host = config.get(section, 'conmux_host')
+if config.has_option(section, 'fvp'):
+    fvp = config.get(section, 'fvp')
+if fvp:
+    if config.has_option(section, "fvp_args"):
+        fvp_args = config.get(section, 'fvp_args')
+    if config.has_option(section, "fvp_license"):
+        fvp_license = config.get(section, 'fvp_license')
+        os.environ["ARMLMD_LICENSE_FILE"] = fvp_license
+    if config.has_option(section, "fvp_uefi"):
+        fvp_uefi = config.getboolean(section, 'fvp_uefi')
 
 if len(args) > 1:
     kimage = args[1]
@@ -1157,9 +1250,10 @@ if locking:
 
     lock_fd = lock_fp.fileno()
 
+connect_console()
+
 try:
     fcntl.lockf(lock_fd, fcntl.LOCK_EX)
-    connect_console()
     time_stop('setup')
 
     time_start('bootloader')
@@ -1171,8 +1265,9 @@ try:
         fastboot_image(kimage, dtb, initrd)
     elif custom_boot:
         # Just run 'boot' using bootcmd from u-boot env
+        command('printenv bootargs')
         command('boot')
-    elif qemu:
+    elif qemu or fvp_uefi:
         pass
     else:
         if not dry_run:
@@ -1216,7 +1311,8 @@ try:
 
     if shutdown:
         progress('userspace: shutting down', log=True)
-        c.sendline('halt')
+        command('halt', exp="The system is going down", timeout=5)
+#        c.sendline('halt')
         time.sleep(1)
         poweroff()
 
@@ -1246,6 +1342,10 @@ finally:
         fcntl.lockf(lock_fd, fcntl.LOCK_UN)
         lock_fp.close()
 
+    if fvp and fvp_proc:
+        print "Attempt to kill FVP proc %d." % fvp_proc.pid
+        fvp_proc.terminate()
+
     # remove non-printable chars (and \r) from temp output log, and save to final location
     log_base = os.path.dirname(logfile)
     if log_base and not os.path.exists(log_base):
@@ -1260,3 +1360,4 @@ finally:
                 shutil.rmtree(f)
             else:
                 os.remove(f)
+        
