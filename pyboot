@@ -509,6 +509,8 @@ def boot_kernel():
     boot_cmd='bootm'
     if os.path.basename(kimage)[0] == 'z':
         boot_cmd='bootz'
+    if os.path.basename(kimage).startswith("Image"):
+        boot_cmd='booti'
 
     if cmdline_append:
         command('setenv bootargs ${bootargs} %s' %cmdline_append)
