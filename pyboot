@@ -355,6 +355,7 @@ def boot_to_uboot():
                       'BOOT0 is starting',
                       'fastboot: processing commands',
                       'Nokia OMAP Loader',
+                      'ASSERT FAILED at \(platform/msm_shared/usb30_dwc.c',
                       pexpect.TIMEOUT])
         if i == 0:
             breakin = True
@@ -367,6 +368,9 @@ def boot_to_uboot():
         elif i == 3:
             progress('u-boot: Nokia OMAP Loader (NOLO) detected.')
             return False
+        elif i == 4:
+            progress('u-boot: HACK: IFC6540: USB assert detected.  Resetting again.')
+            continue
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
