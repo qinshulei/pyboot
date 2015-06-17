@@ -198,7 +198,7 @@ def do_report(retval=0, result=None):
     # sort by total time
     timings_sorted = sorted(timings.items(), key=lambda x: x[1][2], reverse=True)
 
-    report = ""
+    report = "#\n# PYBOOT: cmdline: pyboot " + " ".join(sys.argv[1:]) + "\n"
     if timings.has_key('total'):
         report += "# PYBOOT: Time: %.2f" %time_diff('total')
     report += " ("
