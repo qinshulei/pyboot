@@ -482,7 +482,7 @@ def load_image(file, addr):
                       'Unknown command',
                       'Retry count exceeded',
                       pexpect.TIMEOUT],
-                     timeout=30)
+                     timeout=180)
         if (i == 0):
             j = c.expect([prompt, pexpect.TIMEOUT])
             if j != 0:
@@ -531,7 +531,7 @@ def boot_kernel():
                   'Wrong Image Type for bootm',
                   'Bad Linux ARM zImage magic',
                   pexpect.TIMEOUT],
-                 timeout = 10)
+                 timeout = 30)  # allow time for checksumming large ramdisk, etc.
     if i == 0:
         # Kernel started normally
         pass
