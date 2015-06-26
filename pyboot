@@ -813,7 +813,7 @@ def initrd_insert_modules(initrd, modules):
     initrd_new += ".gz"
     os.chmod(initrd_new, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    if not debug:
+    if debug:
         print "initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new)
     temp_files.append(initrd_new)
 
