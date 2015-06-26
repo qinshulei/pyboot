@@ -65,6 +65,16 @@ uboot_env:
 	bootargs=console=ttyO2,115200n8 debug earlyprintk
 	netargs=%(setip_cmd)s
           
+[duovero]
+loadaddr: 0x81000000
+dtb_addr: 0x81f00000
+dtb: %(dtb_base)s/omap4-duovero-parlor.dtb
+initrd_addr: 0x82000000
+initrd: %(initrd_armel)s
+# Default u-boot doesn't support 'bootz', neet to use bootm
+uimage_addr: xip
+bootargs: console=ttyO2,115200n8 debug earlyprintk ip=none %(mmcroot)s 
+
 [arndale]
 loadaddr: 0x41000000
 dtb_addr: 0x41f00000
@@ -149,6 +159,14 @@ uboot_env:
 	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
+[pepper]
+loadaddr: 0x81000000
+dtb: %(dtb_base)s/am335x-pepper.dtb
+dtb_addr: 0x81f00000
+initrd_addr: 0x82000000
+initrd: %(initrd_armel)s
+bootargs=console=ttyO0,115200n8 earlyprintk
+
 [acme]
 loadaddr: 0x81000000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
@@ -178,7 +196,7 @@ loadaddr: 0x41000000
 dtb_addr: 0x42000000
 dtb: %(dtb_base)s/sun7i-a20-cubieboard2.dtb
 initrd_addr: 0x43000000
-initrd: %(tftproot)s/buildroot.cpio.gz
+initrd: %(initrd_armel)s
 uboot_env:
 	ethaddr=22:71:81:DA:53:EA
 	bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
@@ -376,9 +394,10 @@ initrd_addr: 0x42000000
 uboot_env:
         usbethaddr=2e:40:70:f0:12:08
 	preboot=usb start
-	bootargs=console=ttySAC2,115200n8 debug earlyprintk %(mmcroot)s
+	bootargs=console=ttySAC2,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
+	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 
 [octa]
 loadaddr: 0x21000000
@@ -473,6 +492,14 @@ dtb: %(dtb_base)s/qcom-msm8974-sony-xperia-honami.dtb
 initrd: %(initrd_armel)s
 bootargs: console=ttyMSM,115200,n8 debug earlyprintk
 
+[dragon410c]
+arch: arm64
+image: %(basedir)s/Image
+fastboot: True
+dtb: %(dtb_base)s/qcom/apq8016-sbc.dtb
+initrd: %(initrd_armel)s
+bootargs: console=ttyMSM0,115200,n8 debug earlyprintk
+
 [capri]
 fastboot: True
 dtb: %(dtb_base)s/bcm28155-ap.dtb 
@@ -506,7 +533,7 @@ uboot_env:
 	bootargs=console=ttyS0,115200n8 debug earlyprintk %(mmcroot)s
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
-	netargs=%(setip_cmd)s
+	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 		
 [chromebook2]
 uimage_addr: xip
@@ -591,8 +618,14 @@ arch: arm64
 image: %(basedir)s/Image
 fastboot:true
 dtb: %(dtb_base)s/mediatek/mt8173-evb.dtb
-initrd: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
+initrd: %(initrd_arm64)s
 bootargs: console=ttyS0,921600n1
+
+[mt8135]  
+fastboot:true  
+dtb: %(dtb_base)s/mt8135-evbp1.dtb  
+initrd: %(initrd_armel)s
+bootargs: console=ttyS0,921600n1 
 
 [alpine]
 loadaddr: 0x01000000
@@ -603,6 +636,22 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x02000000
 uboot_env:
         bootargs=console=ttyS0,115200 debug earlyprintk
+
+[hikey]
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x00000000
+dtb: %(dtb_base)s/hisilicon/hi6220-hikey.dtb
+dtb_addr: 0x01f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x02000000
+bootargs: console=ttyAMA0,115200
+dhcp: false
+uboot_env:
+        preboot="usb start"
+        ipaddr=192.168.1.98
+        netmask=255.255.255.0
+        gatewayip=192.168.1.2
 
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]
