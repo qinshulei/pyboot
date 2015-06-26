@@ -354,6 +354,7 @@ def boot_to_uboot():
         i = c.expect(['stop autoboot:',
                       'BOOT0 is starting',
                       'fastboot: processing commands',
+                      'Android Bootloader',
                       'Nokia OMAP Loader',
                       'ASSERT FAILED at \(platform/msm_shared/usb30_dwc.c',
                       pexpect.TIMEOUT])
@@ -362,13 +363,13 @@ def boot_to_uboot():
         elif i == 1:
             progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
             continue
-        elif i == 2:
+        elif i == 2 or i == 3:
             progress('u-boot: fastboot mode detected.')
             return False
-        elif i == 3:
+        elif i == 4:
             progress('u-boot: Nokia OMAP Loader (NOLO) detected.')
             return False
-        elif i == 4:
+        elif i == 5:
             progress('u-boot: HACK: IFC6540: USB assert detected.  Resetting again.')
             continue
         else:
