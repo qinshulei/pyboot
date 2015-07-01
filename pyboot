@@ -609,6 +609,7 @@ def root_shell():
           pexpect.TIMEOUT,
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
+          'Unable to handle kernel (.*)\r\n',
     ]
     done = False
     while not done:
