@@ -356,6 +356,7 @@ def boot_to_uboot():
                       'fastboot: processing commands',
                       'Nokia OMAP Loader',
                       'ASSERT FAILED at \(platform/msm_shared/usb30_dwc.c',
+                      'Starting depthcharge on',
                       pexpect.TIMEOUT])
         if i == 0:
             breakin = True
@@ -371,6 +372,10 @@ def boot_to_uboot():
         elif i == 4:
             progress('u-boot: HACK: IFC6540: USB assert detected.  Resetting again.')
             continue
+        elif i == 5:
+            progress("u-boot: coreboot/depthcharge detected. Entering netboot mode.")
+            c.sendcontrol('N')  # Send Ctrl-N to enter netboot mode
+            return False
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
@@ -962,6 +967,7 @@ qemu_args = None
 conmux_host = None
 locking = True
 timings = {}
+coreboot = False
 
 config = ConfigParser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -1011,6 +1017,8 @@ if qemu:
         qemu_args = config.get(section, 'qemu_args')
 if config.has_option(section, 'conmux_host'):
     conmux_host = config.get(section, 'conmux_host')
+if config.has_option(section, 'coreboot'):
+    coreboot = config.getboolean(section, 'coreboot')
 
 if len(args) > 1:
     kimage = args[1]
@@ -1151,6 +1159,87 @@ if not qemu:
     if initrd:
         initrd = tftp_relpath(initrd)
 
+if coreboot:
+    its_template = config.get(section, "its_template")
+    tftp_host = config.get(section, "tftp_host")
+    tftp_dir = config.get(section, "tftp_dir")
+    tftp_filename = config.get(section, "tftp_filename")
+
+    #
+    # Use template .its file to create real .its file for FIT image.
+    # template needs KIMAGE_FILE, DTB_FILE, RAMDISK_FILE which will be
+    # replaced with actual filenames.
+    #
+    # NOTE: when DTB or ramdisk files not used, an empty dummy file
+    #       is used in the DTS, *but*, those nodes will be
+    #       deleted from the .its below...
+    #
+    progress("prepare: creating FIT image.")
+    its_file = os.path.join(tftpdir, "%s.its" %board)
+    fd, dummy = tempfile.mkstemp(dir=tftpdir, prefix="dummy-")
+    if dtb:
+        dtb_basename = os.path.basename(dtb)
+    else:
+        dtb_basename = os.path.basename(dummy)
+    if initrd:
+        initrd_basename = os.path.basename(initrd);
+    else:
+        initrd_basename = os.path.basename(dummy)
+
+    # search/replace for kernel, dtb and ramdisk filenames
+    cmd = "cat %s | sed -e s/KIMAGE_FILE/%s/" % (its_template, os.path.basename(kimage))
+    cmd += " -e s/DTB_FILE/%s/" % dtb_basename
+    cmd += " -e s/RAMDISK_FILE/%s/" % initrd_basename
+    cmd += "> %s" % its_file
+    subprocess.call(cmd, shell=True)
+
+    if not os.path.exists(its_file):
+        raise Exception("FIT: unable to create FIT .its file")
+
+    #
+    # if dtb/initrd are not actually present, add a magic 'delete-node'
+    # property so that when .its is compiled, the dtb/initrd node
+    # is deleted
+    #
+    if not dtb:
+        fp = open(its_file, "a")
+        fp.write("/ { images { /delete-node/ fdt@1; }; };\n")
+        fp.close()
+    if not initrd:
+        fp = open(its_file, "a")
+        fp.write("/ { images { /delete-node/ ramdisk@1; }; };\n")
+        fp.close()
+
+    # Now, the FIT image can be created.
+    fit_file = os.path.splitext(its_file)[0] + ".fit"
+    cmd = "mkimage -D \"--include %s -I dts -O dtb -p 500\" -f %s %s > /dev/null" \
+          % (tftpdir, its_file, fit_file)
+    subprocess.call(cmd, shell=True)
+
+    if not os.path.exists(fit_file):
+        raise Exception("FIT: unable to create FIT file")
+
+    #
+    # For coreboot/depthcharge netboot, FIT image must be copied to a
+    # hard-coded location.
+    #
+    progress("prepare: coping FIT image to %s:%s" % (tftp_host, tftp_dir))
+    cmd = "scp -q %s %s:%s/%s" % (fit_file, tftp_host, tftp_dir, tftp_filename)
+    subprocess.call(cmd, shell=True)
+
+    #
+    # for coreboot/depthcharge neboot, command-line overrides happen by
+    # a special file called 'cmdline' at the hard-coded TFTP location
+    #
+    if bootargs:
+        progress("prepare: copy command-line file to %s:%s" % (tftp_host, tftp_dir))
+        cmdline_file = os.path.splitext(its_file)[0] + ".cmdline"
+        fp = open(cmdline_file, "w")
+        fp.write(bootargs)
+        fp.close()
+        cmd = "scp -q %s %s:%s/cmdline" % (cmdline_file, tftp_host, tftp_dir)
+        subprocess.call(cmd, shell=True)
+
 lock_fp = lock_fd = None
 if locking:
     lockfile = os.path.join(tempfile.gettempdir(), "pyboot-%s.lock" %board)
@@ -1170,8 +1259,10 @@ try:
     time_stop('setup')
 
     time_start('bootloader')
+    is_uboot = False
     if not qemu:
-        if boot_to_uboot():
+        is_uboot = boot_to_uboot()
+        if is_uboot:
             init_uboot_env()
 
     if fastboot:
@@ -1179,9 +1270,7 @@ try:
     elif custom_boot:
         # Just run 'boot' using bootcmd from u-boot env
         command('boot')
-    elif qemu:
-        pass
-    else:
+    elif is_uboot:
         if not dry_run:
             init_net()
 
