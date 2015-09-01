@@ -200,7 +200,6 @@ initrd: %(initrd_armel)s
 uboot_env:
 	ethaddr=22:71:81:DA:53:EA
 	bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
-	netargs=%(setip_cmd)s
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
 
@@ -321,7 +320,7 @@ initrd_addr: 0x03000000
 
 [beaver]
 loadaddr: 0x81000000
-dtb_addr: 0x83000000
+dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/tegra30-beaver.dtb
 initrd: %(initrd_armel)s
 initrd_addr: 0x82000000
@@ -602,6 +601,19 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x02000000
 bootargs: console=ttyS2,115200 debug earlyprintk
 
+[jerry]
+coreboot: true
+its_template: /home/khilman/work/platforms/rockchip/jerry/veyron-template.its
+tftp_host: vence
+tftp_dir: /tftpboot/chrome-bot/veyron_jerry
+tftp_filename: vmlinuz
+dtb: %(dtb_base)s/rk3288-veyron-jerry.dtb
+loadaddr: 0x01000000
+initrd: %(initrd_armel)s
+initrd_addr: 0x02000000
+mmcpart=/dev/mmcblk0p3
+bootargs: console=ttyS2,115200 debug earlyprintk
+
 [rpi]
 loadaddr: 0x01000000
 dtb_addr: 0x01f00000
@@ -652,6 +664,19 @@ uboot_env:
         ipaddr=192.168.1.98
         netmask=255.255.255.0
         gatewayip=192.168.1.2
+
+[juno-r1]  
+arch: arm64  
+image: %(basedir)s/Image  
+loadaddr: 0x80000000  
+dtb: %(dtb_base)s/arm/juno-r1.dtb
+dtb_addr: 0x81f00000  
+initrd: %(initrd_arm64)s
+initrd_addr: 0x82000000
+dhcp: False  
+uboot_env:
+        ipaddr=192.168.1.97
+        netmask=255.255.255.0
 
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]
