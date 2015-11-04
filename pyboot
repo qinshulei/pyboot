@@ -29,6 +29,7 @@
 # - add 'console_host' option in config file for conmux
 # - support arch, mach, lab-name, etc. from ~/.pyboot 
 #
+from __future__ import print_function
 import os
 import sys
 import time
@@ -39,7 +40,10 @@ import getopt
 import tempfile
 import shutil
 import subprocess
-import ConfigParser
+try:
+    import configparser
+except:
+    import ConfigParser
 import json
 import struct
 import fcntl
@@ -47,17 +51,17 @@ import operator
 
 def usage():
     name = os.path.basename(sys.argv[0])
-    print
-    print name, "[options] <board> [<kernel>[:addr]] [<dtb>[:addr]] [<initrd>[:addr]"
-    print "  -h: this help message"
-    print "  -d: enable debug mode"
-    print "  -v: display verbose interaction with target"
-    print "  -i: after kernel boots, enter interactive mode with serial console"
-    print "  -u <addr>: create uImage from zImage with <addr> as load address"
-    print "             (useful when u-boot is missing bootz support)"
-    print "  -c <cmdline>: append on to kernel commandline"
-    print "  -t: run tests defined in config file"
-    print
+    print()
+    print(name, "[options] <board> [<kernel>[:addr]] [<dtb>[:addr]] [<initrd>[:addr]")
+    print("  -h: this help message")
+    print("  -d: enable debug mode")
+    print("  -v: display verbose interaction with target")
+    print("  -i: after kernel boots, enter interactive mode with serial console")
+    print("  -u <addr>: create uImage from zImage with <addr> as load address")
+    print("             (useful when u-boot is missing bootz support)")
+    print("  -c <cmdline>: append on to kernel commandline")
+    print("  -t: run tests defined in config file")
+    print()
 
 def path_addr_split(path):
     """Split the argument (of the form path[:addr] into (path, addr)"""
@@ -67,7 +71,7 @@ def path_addr_split(path):
     if path.find(':') != -1:
         (path, addr) = path.split(':')
     if not os.path.exists(path):
-        print "ERROR: file", path, "does not exist."
+        print("ERROR: file", path, "does not exist.")
         sys.exit(1)
     return (path, addr)
 
@@ -90,7 +94,7 @@ def progress(str, log=False):
         return
 
     if not quiet:
-        print '%s %s' %(timestamp, str)
+        print('%s %s' %(timestamp, str))
 
 def create_uimage(zimg, addr_str):
     """ Create uImage from zImage with @addr ad load address. """
@@ -110,16 +114,16 @@ def create_uimage(zimg, addr_str):
             addr = int(text_offset, 16)
             entry = addr
             if not quiet:
-                print "uImage: determined load address (0x%08x) from %s." %(addr, system_map)
+                print("uImage: determined load address (0x%08x) from %s." %(addr, system_map))
         elif addr_str == "xip":
             addr = int(loadaddr, 16)
             entry = addr + 64
             if not quiet:
-                print "uImage: XIP mode: Setting uImage load addr to TFTP load addr 0x%08x (and entry point +64b)" %(addr)
+                print("uImage: XIP mode: Setting uImage load addr to TFTP load addr 0x%08x (and entry point +64b)" %(addr))
         else:
             addr = uimage_addr_default
             entry = addr
-            print "WARNING: uImage: Unable to determine load address from %s. Using default 0x%08x" %(addr_str, addr)
+            print("WARNING: uImage: Unable to determine load address from %s. Using default 0x%08x" %(addr_str, addr))
 
     fd, uimg = tempfile.mkstemp(prefix="uImage-")
     temp_files.append(uimg)
@@ -170,7 +174,7 @@ def tftp_cleanup():
 def time_start(key):
     global timings
 
-    if not timings.has_key(key):
+    if key not in timings:
         timings[key] = [0, 0, 0]
 
     timings[key][0] = time.time()
@@ -196,10 +200,10 @@ def do_report(retval=0, result=None):
             result = 'PASS'
 
     # sort by total time
-    timings_sorted = sorted(timings.items(), key=lambda x: x[1][2], reverse=True)
+    timings_sorted = sorted(list(timings.items()), key=lambda x: x[1][2], reverse=True)
 
     report = "#\n# PYBOOT: cmdline: pyboot " + " ".join(sys.argv[1:]) + "\n"
-    if timings.has_key('total'):
+    if 'total' in timings:
         report += "# PYBOOT: Time: %.2f" %time_diff('total')
     report += " ("
     for i, t in enumerate(timings_sorted[1:]):
@@ -211,14 +215,14 @@ def do_report(retval=0, result=None):
         report += "# PYBOOT: Warnings: %d\n" %warnings
     report += "# PYBOOT: Result: %s\n" %result
     if not quiet:
-        print report
+        print(report)
 
     if c.logfile:
         c.logfile.flush()
         c.logfile.write(report)
 
     boot_time = 0
-    if timings.has_key('kernel'):
+    if 'kernel' in timings:
         boot_time = round(time_diff('kernel'), 2)
     boot_meta["boot_time"] = round(boot_time, 2)
     boot_meta["boot_result"] = result
@@ -253,7 +257,7 @@ class dummy_expect:
         self.match = self.dummy_match()
         self.logfile = None
     def sendline(self, str):
-        print str
+        print(str)
     def expect(self, exp=None, timeout=0):
         return 0
     def before(self):
@@ -289,7 +293,7 @@ def connect_console():
         c.logfile = open(exp_logfile, "w")
 
     except IOError:
-        print 'WARNING: Unable to open %s.  Enabling verbose mode.' %logfile
+        print('WARNING: Unable to open %s.  Enabling verbose mode.' %logfile)
         verbose = True
 
     #
@@ -410,7 +414,7 @@ def init_uboot_env():
     # environment values from config file
     if uboot_env:
         uboot_vars = uboot_env.split('\n')
-        uboot_vars = filter(None, uboot_vars) # remove empty items, blank lines...
+        uboot_vars = [_f for _f in uboot_vars if _f] # remove empty items, blank lines...
         for var in uboot_vars:
             (key, val) = var.split('=', 1)
             command('setenv %s %s' %(key, val))
@@ -589,7 +593,7 @@ def wait_for_kernel():
             warnings += 1
             progress("kernel: boot warning:")
             if not quiet:
-                print c.match.group(1)
+                print(c.match.group(1))
             continue
         elif i == 6:
             warnings += 1
@@ -700,7 +704,7 @@ def do_tests():
     tests = config.options('test')
     for test in tests:
         # ignore options from DEFAULTS section
-        if config.defaults().has_key(test):
+        if test in config.defaults():
             continue
         cmd = config.get('test', test)
         run_test(test, cmd)
@@ -742,7 +746,7 @@ def dtb_insert_initrd(dtb, initrd_addr):
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     if not quiet:
-        print "DTB: modified for initrd: %s" %dtb_modified
+        print("DTB: modified for initrd: %s" %dtb_modified)
     return dtb_modified
 
 def dtb_insert_cmdline(dtb, cmdline):
@@ -770,7 +774,7 @@ def dtb_insert_cmdline(dtb, cmdline):
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     if not quiet:
-        print "DTB: modified with bootargs: %s.\n" %bootargs,
+        print("DTB: modified with bootargs: %s." %(bootargs,))
     return dtb_modified
 
 
@@ -784,7 +788,7 @@ def initrd_add_uboot_header(initrd):
     subprocess.call(cmd, shell=True)
     if os.path.exists(initrd_uboot_tmp):
         if not quiet:
-            print("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp)
+            print(("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp))
         os.chmod(initrd_uboot_tmp, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
         initrd_size = os.path.getsize(initrd_uboot_tmp)
         return initrd_uboot_tmp
@@ -819,7 +823,7 @@ def initrd_insert_modules(initrd, modules):
     os.chmod(initrd_new, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     if debug:
-        print "initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new)
+        print("initrd: Inserted modules (%s) into new ramdisk: %s" %(modules, initrd_new))
     temp_files.append(initrd_new)
 
     return initrd_new
@@ -854,7 +858,7 @@ def zimage_hack_endian(kimage):
     fp.seek(zimage_magic_offset)
     fp.write(magic_hack)
     fp.close()
-    print "zImage: HACK: forcing little-endian magic number in %s" %zimage_hack
+    print("zImage: HACK: forcing little-endian magic number in %s" %zimage_hack)
     return zimage_hack
 
 verbose = False
@@ -885,7 +889,7 @@ try:
     opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:M:n:qstu:vwy")
 
 except getopt.GetoptError as err:
-    print str(err) # will print something like "option -a not recognized"
+    print(str(err)) # will print something like "option -a not recognized"
     sys.exit(2)
 for o, a in opts:
     if o == "-a":
@@ -969,7 +973,7 @@ locking = True
 timings = {}
 coreboot = False
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
 
 section = 'DEFAULT'
@@ -978,7 +982,7 @@ if config.has_section(board):
 
 if debug:
     for item in config.items(section):
-        print item
+        print(item)
 
 # Config file options
 if config.has_option(section, 'serverip'):
@@ -1110,17 +1114,17 @@ if qemu:
     boot_meta["qemu"] = qemu
 
 if not quiet:
-    print "Board:", board
-    print "Kernel:", kimage, loadaddr, "(endian: %s)" %endian
+    print("Board:", board)
+    print("Kernel:", kimage, loadaddr, "(endian: %s)" %endian)
     if initrd:
-        print "initrd:", initrd, initrd_addr, initrd_size
+        print("initrd:", initrd, initrd_addr, initrd_size)
     if dtb:
-        print "DTB:", dtb, 
+        print("DTB:", dtb, end=' ')
         if dtb_append:
-            print "(appending to kernel image)"
+            print("(appending to kernel image)")
             dtb_addr = ""
         else:
-            print dtb_addr
+            print(dtb_addr)
 
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
 start_time = time.time()
