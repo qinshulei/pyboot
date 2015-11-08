@@ -43,7 +43,7 @@ import subprocess
 try:
     import configparser
 except:
-    import ConfigParser
+    import ConfigParser as configparser
 import json
 import struct
 import fcntl
@@ -272,6 +272,10 @@ def connect_console():
         c = dummy_expect()
         return
 
+    if sys.version_info.major == 3:
+        kwargs = dict(encoding='utf-8', codec_errors='ignore')
+    else:
+        kwargs = {}
     if qemu:
         qemu_cmd = "%s -nographic %s -kernel %s" %(qemu, qemu_args, kimage)
         if dtb:
@@ -286,7 +290,7 @@ def connect_console():
         conmux_board = board
         if conmux_host:
             conmux_board = "%s/%s" %(conmux_host, board)
-        c = pexpect.spawn("conmux-console %s" %(conmux_board), timeout=30)
+        c = pexpect.spawn("conmux-console %s" %(conmux_board), timeout=30, **kwargs)
     try:
         fd, exp_logfile = tempfile.mkstemp(prefix="conmux-log-")
         temp_files.append(exp_logfile)
@@ -834,7 +838,7 @@ def zimage_is_big_endian(kimage):
     setend_be = 0xf1010200
     setend_be_thumb = 0xb658
 
-    fp = open(kimage, "r")
+    fp = open(kimage, "rb")
     fp.seek(magic_offset)
     val = struct.unpack("=L", fp.read(4))[0]
     fp.seek(magic_offset)
@@ -854,7 +858,7 @@ def zimage_hack_endian(kimage):
     os.close(fd)
     shutil.copyfile(kimage, zimage_hack)
 
-    fp = open(zimage_hack, 'r+')
+    fp = open(zimage_hack, 'rb+')
     fp.seek(zimage_magic_offset)
     fp.write(magic_hack)
     fp.close()
@@ -1126,7 +1130,9 @@ if not quiet:
         else:
             print(dtb_addr)
 
-sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
+if sys.version_info.major <= 2:
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # Unbuffer output
+# TODO: http://stackoverflow.com/questions/107705/disable-output-buffering
 start_time = time.time()
 time_start('total')
 time_start('setup')
