@@ -437,6 +437,7 @@ def init_net():
         i = c.expect(["DHCP client bound",
                       "Unknown command",
                       "Retry count exceeded",
+                      "No link",
                       pexpect.TIMEOUT],
                      timeout = 30)
         if i == 0:
