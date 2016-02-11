@@ -679,8 +679,11 @@ def check_errors_warnings():
     command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l alert | awk \'{ print "[ERR] " $0 }\'')
     # or, on busybox, just check for kern.err, kern.warn in /var/log/messages
     command('[[ -e /var/log/messages ]] && grep kern.warn /var/log/messages | awk \'{ print "[WARN] " $0 }\'')
+    command('[[ -e /var/log/messages ]] && grep user.warn /var/log/messages | awk \'{ print "[WARN] " $0 }\'')
     command('[[ -e /var/log/messages ]] && grep kern.err /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
+    command('[[ -e /var/log/messages ]] && grep user.err /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
     command('[[ -e /var/log/messages ]] && grep kern.alert /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
+    command('[[ -e /var/log/messages ]] && grep user.alert /var/log/messages | awk \'{ print "[ERR] " $0 }\'')
     command('sleep 0.2')
 
 def run_test(test, cmd):
