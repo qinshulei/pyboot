@@ -359,13 +359,13 @@ def boot_to_uboot():
                 c.sendcontrol(ch)
 
         # Break into u-boot
-        i = c.expect(['stop autoboot:',
+        i = c.expect(['stop autoboot',
                       'BOOT0 is starting',
                       'fastboot: processing commands',
                       'Nokia OMAP Loader',
                       'ASSERT FAILED at \(platform/msm_shared/usb30_dwc.c',
                       'Starting depthcharge on',
-                      pexpect.TIMEOUT])
+                      pexpect.TIMEOUT], timeout = 45)
         if i == 0:
             breakin = True
         elif i == 1:
@@ -624,6 +624,7 @@ def root_shell():
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
           'Unable to handle kernel (.*)\r\n',
+          'Booting Linux',
     ]
     done = False
     while not done:
@@ -639,6 +640,8 @@ def root_shell():
             warnings += 1
             msg = c.match.group(0)
             progress('kernel: %s' %msg, log=True)
+        elif i == 5:
+            raise Exception('kernel: reboot detected')
         else:
             raise Exception('userspace: failed to find root shell: %s' %pl[i])
     
