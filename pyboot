@@ -324,9 +324,17 @@ def connect_console():
     c.sendline('')
     progress('console: connected.', log=True)
 
+def chunkstring(line, n):
+    return [line[i:i+n] for i in range(0, len(line), n)]
+
 def sendline(str):
     global c
-    c.sendline(str)
+    if uart_fifo_hack:
+        for chunk in chunkstring(str, uart_fifo_hack):
+            c.send(chunk)
+        c.sendline('')
+    else:
+        c.sendline(str)
 
 def command(str, exp=None, timeout=-1):
     global prompt
@@ -439,7 +447,8 @@ def init_net():
     global prompt
     retries = 3
 
-    command('setenv autoload no; setenv autoboot no')
+    command('setenv autoload no')
+    command('setenv autoboot no')
     while retries and dhcp:
         sendline("dhcp")
         i = c.expect(["DHCP client bound",
@@ -895,6 +904,7 @@ temp_files = []
 lab_name = None
 board_name = None
 mach = None
+uart_fifo_hack = None
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:M:n:qstu:vwy")
@@ -1034,6 +1044,8 @@ if config.has_option(section, 'conmux_host'):
     conmux_host = config.get(section, 'conmux_host')
 if config.has_option(section, 'coreboot'):
     coreboot = config.getboolean(section, 'coreboot')
+if config.has_option(section, 'uart_fifo_hack'):
+    uart_fifo_hack = int(config.get(section, 'uart_fifo_hack'))
 
 if len(args) > 1:
     kimage = args[1]
