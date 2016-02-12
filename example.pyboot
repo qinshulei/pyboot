@@ -10,7 +10,7 @@
 [DEFAULT]
 arch: arm
 conmux_host: vence
-serverip: 192.168.1.3
+serverip: 192.168.0.3
 tftproot: /tftpboot
 basedir: arch/%(arch)s/boot
 image: %(basedir)s/zImage
@@ -21,14 +21,14 @@ initrd_armeb: /opt/kjh/rootfs/buildroot/armeb/rootfs.cpio.gz
 initrd_arm64: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
 
 eth_dev:
-ip_cmd="ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::%(eth_dev)s:none:192.168.1.254"
+ip_cmd="ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::%(eth_dev)s:none:192.168.0.254"
 setip_cmd: 'setenv bootargs ${bootargs} %(ip_cmd)s'
 
-#setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.1.254:none'
+#setip_cmd: 'setenv bootargs ${bootargs} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}::::192.168.0.254:none'
 #nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=${rootpath}'
 #nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
 #nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/linaro/developer,rsize=4096,wsize=4096'
-nfsroot_cmd='setenv bootargs ${bootargs} root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
+nfsroot_cmd='setenv bootargs ${bootargs} ro root=/dev/nfs nfsroot=192.168.1.2:/opt/kjh/rootfs/debian/armel,rsize=4096,wsize=4096'
 
 
 debug=debug initcall_debug
@@ -79,12 +79,11 @@ bootargs: console=ttyO2,115200n8 debug earlyprintk ip=none %(mmcroot)s
 loadaddr: 0x41000000
 dtb_addr: 0x41f00000
 dtb: %(dtb_base)s/exynos5250-arndale.dtb
-initrd_addr: 0x42000000
+initrd_addr: 0x44000000
 initrd: %(initrd_armel)s
 mmcpart: /dev/mmcblk1p3
 uboot_env:
-	bootargs=console=tty0 console=ttySAC2,115200n8 %(mmcroot)s
-	netargs=%(setip_cmd)s
+	bootargs=console=tty0 console=ttySAC2,115200n8
 
 [origen]
 loadaddr: 0x41000000
@@ -231,6 +230,30 @@ uboot_env:
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
 
+[chip]
+loadaddr: 0x41000000
+dtb_addr: 0x42000000
+dtb: %(dtb_base)s/sun5i-r8-chip.dtb
+initrd_addr: 0x43000000
+initrd: %(initrd_armel)s
+bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
+
+[pine64]
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x41000000
+dtb_addr: 0x42000000
+dtb: %(dtb_base)s/allwinner/pine64.dtb
+initrd_addr: 0x43000000
+initrd: %(initrd_arm64)s
+bootargs=console=console=ttyS0,115200n8 earlycon=uart,mmio32,0x01c28000 debug earlyprintk
+
+[helium]
+loadaddr: 0x01000000
+dtb_addr: 0x02f00000
+initrd_addr: 0x03000000
+initrd: %(initrd_arm64)s
+
 [wand-solo]
 loadaddr: 0x11000000
 dtb_addr: 0x12000000
@@ -330,6 +353,34 @@ uboot_env:
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
 
+[tegra20-iris-512]
+conmux_host: fitlet
+loadaddr: 0x01000000
+dtb_addr: 0x01f00000
+dtb: %(dtb_base)s/tegra20-iris-512.dtb
+initrd: %(initrd_armel)s
+initrd_addr: 0x02000000
+bootargs: console=tty1 console=ttyS0,115200n8
+# default u-boot goes to RGB display also, but causes lost chars
+uboot_early: setenv stdout serial
+# even with that, there are still some UART FIFO issues
+uart_fifo_hack: 32
+uboot_env:
+	preboot=usb start
+
+[meson8b-odroidc1]
+conmux_host: fitlet
+loadaddr: 0x21000000
+uimage_addr: 00208000
+dtb_addr: 0x21800000
+dtb: %(dtb_base)s/meson8b-odroidc1.dtb
+initrd: %(initrd_armel)s
+initrd_addr: 0x22000000
+uboot_env:
+	fdt_high=0xffffffff
+	initrd_high=0xffffffff
+	bootargs=console=ttyAML0,115200
+
 [osk]
 uimage_addr: 0x10008000
 loadaddr: 0x10408000
@@ -396,12 +447,11 @@ uboot_env:
 	bootargs=console=ttySAC2,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
-	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 
 [octa]
 loadaddr: 0x21000000
 dtb: %(dtb_base)s/exynos5420-arndale-octa.dtb
-dtb_addr: 0x23000000
+dtb_addr: 0x21f00000
 initrd_addr: 0x22000000
 initrd: %(initrd_armel)s
 uboot_env:
@@ -409,7 +459,6 @@ uboot_env:
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
 	bootargs=console=ttySAC3,115200n8 debug earlyprintk
-	netargs=%(setip_cmd)s
 
 [kzm9d]
 uimage_addr: xip
@@ -427,12 +476,13 @@ loadaddr: 0x81000000
 dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap5-uevm.dtb
 initrd_addr: 0x82000000
-initrd: %(initrd_armel)s
+#initrd: %(initrd_armel)s
+mmcpart: /dev/mmcblk1p2
 uboot_env:
 	preboot=usb start
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
-	bootargs=console=ttyO2,115200n8 debug earlyprintk
+	bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
 	netargs=%(setip_cmd)s
 
 [am43xevm]
@@ -489,7 +539,7 @@ bootargs: console=ttyMSM0,115200,n8 debug earlyprintk
 fastboot: True
 dtb: %(dtb_base)s/qcom-msm8974-sony-xperia-honami.dtb
 initrd: %(initrd_armel)s
-bootargs: console=ttyMSM,115200,n8 debug earlyprintk
+bootargs: console=ttyMSM,115200,n8 debug earlycon
 
 [dragon410c]
 arch: arm64
@@ -517,19 +567,19 @@ uboot_env:
 fastboot: True
 dtb: %(dtb_base)s/omap3-n900.dtb 
 # default rootfs: MMC
+mmcpart: /dev/mmcblk0p2
 bootargs: console=ttyO2,115200n8 debug earlyprintk rw rootwait root=/dev/mmcblk0p2 init=/bin/sh
 
 
 [jetson]
 loadaddr: 0x81000000
-dtb_addr: 0x82000000
+dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/tegra124-jetson-tk1.dtb
-initrd_addr: 0x83000000
+initrd_addr: 0x82000000
 #initrd: %(initrd_armel)s
-mmcpart: /dev/mmcblk0p1
+mmcpart: /dev/mmcblk0p2
 uboot_env:
-	preboot=usb start 0
-	bootargs=console=ttyS0,115200n8 debug earlyprintk %(mmcroot)s
+	bootargs=console=ttyS0,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
 	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
@@ -553,9 +603,10 @@ uboot_env:
 	preboot="usb start; sleep 1"
 	bootargs=console=tty1 console=ttySAC3,115200 debug earlyprintk %(mmcroot)s
 
-[versatilepb]
+[versatile-pb]
 qemu: qemu-system-arm
 qemu_args: -M versatilepb
+dtb: %(dtb_base)s/versatile-pb.dtb
 initrd: %(initrd_armel)s
 bootargs: console=ttyAMA0
 
@@ -566,7 +617,7 @@ dtb: %(dtb_base)s/vexpress-v2p-ca9.dtb
 initrd: %(initrd_armel)s
 bootargs: console=ttyAMA0
 
-[vexpress-v2p-ca15]
+[vexpress-v2p-ca15-tc1]
 qemu: qemu-system-arm
 qemu_args: -M vexpress-a15
 dtb: %(dtb_base)s/vexpress-v2p-ca15-tc1.dtb
@@ -580,7 +631,9 @@ qemu: qemu-system-aarch64
 # Use 'tap' for bridged neworking (requires sudo)
 qemu_net: user
 qemu_net_options: -device virtio-net-device,vlan=0,id=net0 -net %(qemu_net)s
-qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s
+#qemu_bios: -bios /home/khilman/work/platforms/arm64/QEMU_EFI.fd
+qemu_bios:
+qemu_args: -M virt -cpu cortex-a57 -m 1024 %(qemu_net_options)s %(qemu_bios)s
 bootargs: console=ttyAMA0,115200
 initrd: /opt/kjh/rootfs/buildroot/arm64/rootfs.cpio.gz
 
@@ -640,12 +693,12 @@ initrd: %(initrd_armel)s
 bootargs: console=ttyS0,921600n1 
 
 [alpine]
-loadaddr: 0x01000000
+loadaddr: 0x04000000
 dtb: %(dtb_base)s/alpine-db.dtb
-dtb_addr: 0x01f00000
+dtb_addr: 0x04f00000
 bootargs: console=ttyS0,115200 debug earlyprintk
 initrd: %(initrd_armel)s
-initrd_addr: 0x02000000
+initrd_addr: 0x05000000
 uboot_env:
         bootargs=console=ttyS0,115200 debug earlyprintk
 
@@ -661,9 +714,24 @@ bootargs: console=ttyAMA0,115200
 dhcp: false
 uboot_env:
         preboot="usb start"
-        ipaddr=192.168.1.98
+        ipaddr=192.168.0.98
         netmask=255.255.255.0
-        gatewayip=192.168.1.2
+        gatewayip=192.168.0.254
+
+[socfpga]
+loadaddr: 0x01000000
+dtb: %(dtb_base)s/socfpga_cyclone5_de0_sockit.dtb
+#dtb_addr: 0x01f00000
+dtb_addr: 0x00000100
+initrd_addr: 0x02000000
+initrd: %(initrd_armel)s
+dhcp: false
+uart_fifo_hack: 32
+uboot_env:
+	bootargs=console=ttyS0,115200n8
+	ipaddr=192.168.0.111
+        gatewayip=192.168.0.254
+	netmask=255.255.255.0
 
 [juno-r1]  
 arch: arm64  
@@ -675,6 +743,16 @@ initrd: %(initrd_arm64)s
 initrd_addr: 0x82000000
 bootargs: console=ttyAMA0,115200n8
 
+[vf610-colibri-eval-v3]
+conmux_host: fitlet
+loadaddr: 0x82000000
+dtb: %(dtb_base)s/vf610-colibri-eval-v3.dtb
+dtb_addr: 0x82f00000
+initrd: %(initrd_armel)s
+initrd_addr: 0x83000000
+bootargs: console=tty1 console=ttyLP0,115200n8 
+
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]
 init: mount -t proc none /proc; mount -t sysfs none /sys; mount -t debugfs none /sys/kernel/debug
+tick: while true; do date; sleep 1; done
