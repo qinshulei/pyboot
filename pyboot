@@ -96,11 +96,8 @@ def progress(str, log=False):
     if not quiet:
         print('%s %s' %(timestamp, str))
 
-def create_uimage(zimg, addr_str):
-    """ Create uImage from zImage with @addr ad load address. """
-    if not os.path.basename(zimg).startswith('z'):
-        raise Exception('ERROR: need a zImage to create a uImage: %s' %zimg)
-
+def create_uimage(kimg, addr_str):
+    """ Create uImage from kernel Image with @addr ad load address. """
     # Check if 'addr' is hex.  If not, it might be path to System.map,
     # where look for _text symbol to determine load address
     try:
@@ -127,7 +124,7 @@ def create_uimage(zimg, addr_str):
 
     fd, uimg = tempfile.mkstemp(prefix="uImage-")
     temp_files.append(uimg)
-    cmd = 'mkimage -A arm -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(addr, entry, zimg, uimg)
+    cmd = 'mkimage -A %s -O linux -T kernel -C none -a 0x%x -e 0x%x -n "Linux" -d %s %s > /dev/null' %(arch, addr, entry, kimg, uimg)
     subprocess.call(cmd, shell=True)
     os.chmod(uimg, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     if not os.path.exists(uimg):
@@ -1050,6 +1047,10 @@ if config.has_option(section, 'coreboot'):
 if config.has_option(section, 'uart_fifo_hack'):
     uart_fifo_hack = int(config.get(section, 'uart_fifo_hack'))
 
+arch = "arm"
+if config.has_option(section, "arch"):
+    arch = config.get(section, "arch")
+    
 if len(args) > 1:
     kimage = args[1]
 if len(args) > 2:
