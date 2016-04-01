@@ -145,7 +145,7 @@ dtb: %(dtb_base)s/am335x-bone.dtb
 initrd_addr: 0x82000000
 initrd: %(initrd_armel)s
 uboot_env:
-	bootargs=console=ttyO0,115200n8 earlyprintk
+	bootargs=console=ttyO0,115200n8 debug earlyprintk
 	netargs=%(setip_cmd)s
 
 [am335xboneb]
@@ -371,7 +371,7 @@ uboot_env:
 [meson8b-odroidc1]
 conmux_host: fitlet
 loadaddr: 0x21000000
-uimage_addr: 00208000
+uimage_addr: 0x00208000
 dtb_addr: 0x21800000
 dtb: %(dtb_base)s/meson8b-odroidc1.dtb
 initrd: %(initrd_armel)s
@@ -380,6 +380,46 @@ uboot_env:
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
 	bootargs=console=ttyAML0,115200
+
+[meson-gxbb-p200]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x02000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxbb-p200.dtb
+dtb_addr: 0x01f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x03000000
+bootargs: console=ttyAML0,115200
+#bootargs: console=ttyAML0,115200 earlycon=meson,0xc81004c0
+# DHCP doesn't work, broadcasts MAC addr all zeros
+dhcp: false
+uboot_env:
+        preboot=
+        ipaddr=192.168.0.97
+        netmask=255.255.255.0
+        gatewayip=192.168.0.254
+
+[meson-gxbb-odroidc2]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+#loadaddr: 0x01080000
+loadaddr: 0x02000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxbb-odroidc2.dtb
+dtb_addr: 0x01f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x03000000
+bootargs: console=ttyAML0,115200
+dhcp: false
+uboot_env:
+        ipaddr=192.168.0.96
+        netmask=255.255.255.0
+        gatewayip=192.168.0.254
 
 [osk]
 uimage_addr: 0x10008000
@@ -509,6 +549,7 @@ initrd_addr: 0xc2000000
 initrd: %(initrd_armel)s
 initrd_uboot: True
 uboot_env:
+	gatewayip=192.168.0.254
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
 
 [dragon]
@@ -754,5 +795,7 @@ bootargs: console=tty1 console=ttyLP0,115200n8
 
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]
-init: mount -t proc none /proc; mount -t sysfs none /sys; mount -t debugfs none /sys/kernel/debug
-tick: while true; do date; sleep 1; done
+#init: mount -t proc none /proc; mount -t sysfs none /sys; mount -t debugfs none /sys/kernel/debug
+#tick: while true; do date; sleep 1; done
+hibernate_mt8173: swapon /dev/mmcblk1p2; echo disk > /sys/power/state
+#hibernate_juno: swapon /dev/sda2; echo disk > /sys/power/state
