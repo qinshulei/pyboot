@@ -130,7 +130,7 @@ def create_uimage(kimg, addr_str):
     if not os.path.exists(uimg):
         raise Exception('Unable to create uImage.')
     else:
-        progress("Convered zImage to uImage (load address = 0x%08x)" %addr)
+        progress("Convered zImage to uImage (arch = %s, load address = 0x%08x)" %(arch, addr))
 
     return uimg
 
@@ -393,6 +393,7 @@ def boot_to_uboot():
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
     c.sendline('\r')
+    c.sendline('\r')  # ugh, some board need two keys pressed (odroid-c2)
     progress('u-boot: taking control.', log=True)
 
     # Find u-boot prompt
@@ -571,7 +572,7 @@ def wait_for_kernel():
 
     i = c.expect(['Booting Linux',
                   'Linux version',
-                  pexpect.TIMEOUT, pexpect.EOF], timeout = 30)
+                  pexpect.TIMEOUT, pexpect.EOF], timeout = 120)
     if i == 0 or i == 1:
         # normal booting
         pass
@@ -587,6 +588,7 @@ def wait_for_kernel():
     while not done:
         pl = ['Freeing unused kernel memory',
               'Freeing init memory',
+              'PM: restore of devices complete',  # detect resore of hibernation image
               'Unable to handle kernel (.*)\r\n',
               'Kernel panic',
               'VFS: Unable to mount root fs',
@@ -595,10 +597,10 @@ def wait_for_kernel():
               'Booting Linux',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
-        if i == 0 or i == 1:  
+        if i == 0 or i == 1 or i == 2:  
             # Kernel booted normally
             done = True
-        elif i == 2:
+        elif i == 3:
             msg = c.match.group(0)
             raise Exception("kernel: %s" %msg)
         elif i == 5:
@@ -1325,8 +1327,14 @@ try:
         c.interact()
         do_report(0)
 
+    quiet_kernel = False
+    if cmdline_append and cmdline_append.find("quiet") >= 0:
+        quiet_kernel = True
+        progress("kernel: starting quiet kernel (no serial output)")
+                 
     time_start('kernel')
-    wait_for_kernel()
+    if not quiet_kernel:
+        wait_for_kernel()
     time_stop('kernel')
 
     time_start('userspace')
