@@ -595,6 +595,7 @@ def wait_for_kernel():
               'VFS: Unable to mount root fs',
               '-+\[ cut here \]-+\s+(.*\s+-+\[ end trace (\w*) \]-+)',
               '(Unhandled fault.*)\r\n',
+              'Booting Linux',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
         if i == 0 or i == 1:  
@@ -605,7 +606,7 @@ def wait_for_kernel():
             raise Exception("kernel: %s" %msg)
         elif i == 5:
             warnings += 1
-            progress("kernel: boot warning:")
+            progress("kernel: boot warning %d:" % warnings)
             if not quiet:
                 print(c.match.group(1))
             continue
@@ -615,6 +616,8 @@ def wait_for_kernel():
             progress("kernel: %s" %msg, log=True)
             continue
         elif i == 7:
+            raise Exception('kernel: reboot detected')
+        elif i == 8:
             raise Exception("kernel: ERROR: Timeout waiting for kernel to finish booting.")
         else:
             raise Exception('kernel: ERROR: failed to boot: %s' %pl[i])
