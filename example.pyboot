@@ -10,7 +10,7 @@
 [DEFAULT]
 arch: arm
 conmux_host: vence
-serverip: 192.168.0.3
+serverip: 192.168.1.2
 tftproot: /tftpboot
 basedir: arch/%(arch)s/boot
 image: %(basedir)s/zImage

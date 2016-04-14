@@ -806,7 +806,7 @@ def initrd_add_uboot_header(initrd):
     fd, initrd_uboot_tmp = tempfile.mkstemp(prefix=basename, suffix=".uboot")
     temp_files.append(initrd_uboot_tmp)
     os.close(fd) 
-    cmd = "mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(basename, initrd, initrd_uboot_tmp)
+    cmd = "mkimage -A %s -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(arch, basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
     if os.path.exists(initrd_uboot_tmp):
         if not quiet:
