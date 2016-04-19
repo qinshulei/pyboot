@@ -325,7 +325,8 @@ def chunkstring(line, n):
     return [line[i:i+n] for i in range(0, len(line), n)]
 
 def sendline(str):
-    global c
+    global c, uart_fifo_hack
+
     if uart_fifo_hack:
         for chunk in chunkstring(str, uart_fifo_hack):
             c.send(chunk)
@@ -343,6 +344,10 @@ def command(str, exp=None, timeout=-1):
                   pexpect.EOF,
                   pexpect.TIMEOUT], timeout=timeout)
     if i == 0:
+        # double-check if this prompt is the result of the command we just sent.  If not,
+        # it probably means we're missing a c.expect() someplace
+        if debug and (not str in c.before):
+            progress('WARN: command(%s): str was not in c.before="%s"' % (str, c.before))
         pass
     elif i == 1:
         raise Exception("ERROR: console: unexpectedly disconnected.")
@@ -392,8 +397,8 @@ def boot_to_uboot():
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
-    c.sendline('\r')
-    c.sendline('\r')  # ugh, some board need two keys pressed (odroid-c2)
+    c.send('\r')
+    c.send('\r')  # ugh, some board need two keys pressed (odroid-c2)
     progress('u-boot: taking control.', log=True)
 
     # Find u-boot prompt
@@ -406,6 +411,9 @@ def boot_to_uboot():
     if prompt.endswith('$'):
         prompt = prompt[:-1] + "\$"
 
+    # due to the extra <enter> press above, need to flush the 2nd prompt from 
+    # the input buffer
+    c.expect(prompt) 
     return True
 
 def init_uboot_env():
@@ -417,8 +425,8 @@ def init_uboot_env():
         for ch in uboot_early:
             c.send(ch)
         c.send("\n")
+        c.expect(prompt)
 
-    c.expect(prompt)
     command('version')
 
     # environment values from config file
