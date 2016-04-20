@@ -412,8 +412,9 @@ def boot_to_uboot():
         prompt = prompt[:-1] + "\$"
 
     # due to the extra <enter> press above, need to flush the 2nd prompt from 
-    # the input buffer
-    c.expect(prompt) 
+    # the input buffer.  Note that 2nd prompt wont be there when 2 keypresses
+    # are actually needed, so timeout quickly)
+    c.expect([prompt, pexpect.TIMEOUT], timeout=0.2)
     return True
 
 def init_uboot_env():
@@ -602,7 +603,6 @@ def wait_for_kernel():
               'VFS: Unable to mount root fs',
               '-+\[ cut here \]-+\s+(.*\s+-+\[ end trace (\w*) \]-+)',
               '(Unhandled fault.*)\r\n',
-              'Booting Linux',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
         if i == 0 or i == 1 or i == 2:  
@@ -611,19 +611,17 @@ def wait_for_kernel():
         elif i == 3:
             msg = c.match.group(0)
             raise Exception("kernel: %s" %msg)
-        elif i == 5:
+        elif i == 6:
             warnings += 1
             progress("kernel: boot warning %d:" % warnings)
             if not quiet:
                 print(c.match.group(1))
             continue
-        elif i == 6:
+        elif i == 7:
             warnings += 1
             msg = c.match.group(0)
             progress("kernel: %s" %msg, log=True)
             continue
-        elif i == 7:
-            raise Exception('kernel: reboot detected')
         elif i == 8:
             raise Exception("kernel: ERROR: Timeout waiting for kernel to finish booting.")
         else:
@@ -643,7 +641,6 @@ def root_shell():
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
           'Unable to handle kernel (.*)\r\n',
-          'Booting Linux',
     ]
     done = False
     while not done:
@@ -659,8 +656,6 @@ def root_shell():
             warnings += 1
             msg = c.match.group(0)
             progress('kernel: %s' %msg, log=True)
-        elif i == 5:
-            raise Exception('kernel: reboot detected')
         else:
             raise Exception('userspace: failed to find root shell: %s' %pl[i])
     
