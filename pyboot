@@ -1187,7 +1187,7 @@ if convert_uimage:
     boot_meta["uimage_addr"] = uimage_addr
 
 if not qemu:
-    if (initrd and not dtb) or initrd_uboot:
+    if initrd_uboot:
         initrd = initrd_add_uboot_header(initrd)
 
     tftp_setup()
