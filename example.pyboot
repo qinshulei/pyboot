@@ -793,6 +793,32 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x83000000
 bootargs: console=tty1 console=ttyLP0,115200n8 
 
+[bcm7252]
+conmux_host: fitlet
+loadaddr: 0x01000000
+initrd: %(initrd_armel)s
+initrd_addr: 0x02000000
+initrd_uboot: false
+bootargs: root=/dev/ram0 initrd=%(initrd_addr)s,{RAMDISK_SIZE} earlyprintk
+bootloader_prompt = BOLT>
+bootloader_commands:
+	ifconfig eth0 -auto
+	load -raw -tftp -addr=%(initrd_addr)s %(serverip)s:{RAMDISK}
+	boot -zimg -tftp -addr=%(loadaddr)s %(serverip)s:{KERNEL} "%(bootargs)s"
+
+[sr400ac]
+loadaddr: 0x01000000
+dtb: %(dtb_base)s/bcm4708-smartrg-sr400ac.dtb
+dtb_append: true
+initrd: %(initrd_armel)s
+initrd_addr: 0x04000000
+bootargs: console=ttyS0,115200 earlyprintk ip=dhcp
+bootloader_prompt = CFE>
+bootloader_commands:
+	ifconfig eth0 -addr=192.168.0.95 -mask=255.255.255.0 -gw=192.168.0.254 -dns=192.168.0.254
+ 	load -raw -tftp -addr=%(initrd_addr)s %(serverip)s:{RAMDISK}
+	boot -raw -tftp -addr=%(loadaddr)s %(serverip)s:{KERNEL}
+
 # each test entry can be run automaticaly.  See '-t' option to pyboot
 [test]
 #init: mount -t proc none /proc; mount -t sysfs none /sys; mount -t debugfs none /sys/kernel/debug

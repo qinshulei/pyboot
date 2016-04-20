@@ -355,7 +355,7 @@ def command(str, exp=None, timeout=-1):
         raise Exception("ERROR: Timeout waiting for command: %s." %str)
 
 def boot_to_uboot():
-    global prompt, post_reset_ctrl
+    global prompt, post_reset_ctrl, bootloader_custom
     
     breakin = False
     while not breakin:
@@ -375,6 +375,8 @@ def boot_to_uboot():
                       'Nokia OMAP Loader',
                       'ASSERT FAILED at \(platform/msm_shared/usb30_dwc.c',
                       'Starting depthcharge on',
+                      'BOLT v([\d\.]+)\s',
+                      'CFE version ([\d\.]+)\s',
                       pexpect.TIMEOUT], timeout = 45)
         if i == 0:
             breakin = True
@@ -393,6 +395,10 @@ def boot_to_uboot():
         elif i == 5:
             progress("u-boot: coreboot/depthcharge detected. Entering netboot mode.")
             c.sendcontrol('N')  # Send Ctrl-N to enter netboot mode
+            return False
+        elif i == 6 or i == 7:
+            progress("console: bootloader detected: %s" % c.match.group(0))
+            bootloader_custom = True
             return False
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
@@ -998,6 +1004,7 @@ conmux_host = None
 locking = True
 timings = {}
 coreboot = False
+bootloader_custom = False
 
 config = configparser.ConfigParser()
 config.read(['/etc/pyboot.conf', os.path.expanduser('~/.pyboot'), '.pyboot'])
@@ -1051,6 +1058,7 @@ if config.has_option(section, 'coreboot'):
     coreboot = config.getboolean(section, 'coreboot')
 if config.has_option(section, 'uart_fifo_hack'):
     uart_fifo_hack = int(config.get(section, 'uart_fifo_hack'))
+
 
 arch = "arm"
 if config.has_option(section, "arch"):
@@ -1297,6 +1305,7 @@ try:
     time_stop('setup')
 
     time_start('bootloader')
+
     is_uboot = False
     if not qemu:
         is_uboot = boot_to_uboot()
@@ -1305,6 +1314,36 @@ try:
 
     if fastboot:
         fastboot_image(kimage, dtb, initrd)
+    elif bootloader_custom:
+        # Just look for prompt, and run commands
+        if not config.has_option(section, "bootloader_prompt"):
+            raise Exception("bootloader_custom: missing bootloader_prompt.  Giving up.")
+
+        if not config.has_option(section, "bootloader_commands"):
+            raise Exception("bootloader_custom: missing bootloader_commands.  Giving up.")
+            
+        bootloader_prompt = config.get(section, "bootloader_prompt")
+        bootloader_commands = config.get(section, "bootloader_commands")
+
+        c.expect([bootloader_prompt, pexpect.TIMEOUT], timeout=5)
+
+        # pre-process commands to replace filenames
+        boot_cmds = []
+        for cmd in bootloader_commands.splitlines():
+            cmd = cmd.replace("{KERNEL}", kimage)
+            if initrd:
+                cmd = cmd.replace("{RAMDISK}", initrd)
+                cmd = cmd.replace("{RAMDISK_SIZE}", "%d" % initrd_size)
+            boot_cmds.append(cmd)
+            
+        # send commands
+        for cmd in boot_cmds[0:-1]:
+            command(cmd, bootloader_prompt, timeout=120)
+
+        # the last command is expected to boot the kernel, don't wait for it
+        cmd = boot_cmds[-1]
+        c.sendline(cmd)
+        
     elif custom_boot:
         # Just run 'boot' using bootcmd from u-boot env
         command('boot')
