@@ -48,6 +48,7 @@ import json
 import struct
 import fcntl
 import operator
+from pyfdt.pyfdt import FdtBlobParse, FdtPropertyWords, FdtPropertyStrings
 
 def usage():
     name = os.path.basename(sys.argv[0])
@@ -746,34 +747,32 @@ def poweroff():
 
 def dtb_insert_initrd(dtb, initrd_addr):
     """ Insert initrd start/end addresses into DTB.
-    
-    NOTE: we could use fdtput for this but the original DTB needs to have
-    enough padding in it for the new commandline, which is not guaranteed.
     """
     global initrd_cmdline
+    
+    with open(dtb) as infile:
+        dtbobj = FdtBlobParse(infile)
 
-    # de-compile DTB into temp DTS
-    fd, tmp_dts = tempfile.mkstemp(suffix=".dts")
-    temp_files.append(tmp_dts)
-    os.close(fd)
-    cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
-    subprocess.call(cmd, shell=True)
+    fdt = dtbobj.to_fdt()
 
     initrd_start = int(initrd_addr, 16)
     initrd_end = initrd_start + initrd_size
-    chosen_frag = "/ { chosen { linux,initrd-start = <0x%08x>; linux,initrd-end = <0x%08x>; }; };\n" %(initrd_start, initrd_end)
-    fp = open(tmp_dts, 'a')
-    fp.write(chosen_frag)
-    fp.close()
+
+    chosen = fdt.resolve_path('/chosen')
+    if chosen._find("linux,initrd-start"):
+        chosen.remove("linux,initrd-start")
+    chosen.append(FdtPropertyWords("linux,initrd-start", [initrd_start]))
+    if chosen._find("linux,initrd-end"):
+        chosen.remove("linux,initrd-end")
+    chosen.append(FdtPropertyWords("linux,initrd-end", [initrd_end]))
+
     initrd_cmdline = True
 
     # Re-compile DTS into new DTB
     fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
     temp_files.append(dtb_modified)
+    os.write(fd, fdt.to_dtb())
     os.close(fd)
-    cmd = "dtc -I dts -O dtb -o %s %s > /dev/null 2>&1" %(dtb_modified, tmp_dts)
-    subprocess.call(cmd, shell=True)
-    os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     if not quiet:
@@ -783,29 +782,25 @@ def dtb_insert_initrd(dtb, initrd_addr):
 def dtb_insert_cmdline(dtb, cmdline):
     global bootargs
 
-    # de-compile DTB into temp DTS
-    fd, tmp_dts = tempfile.mkstemp(suffix=".dts")
-    temp_files.append(tmp_dts)
-    os.close(fd)
-    cmd = "dtc -q -I dtb -O dts -o %s %s > /dev/null 2>&1" %(tmp_dts, dtb)
-    subprocess.call(cmd, shell=True)
+    with open(dtb) as infile:
+        dtbobj = FdtBlobParse(infile)
 
-    chosen_frag = '/ { chosen { bootargs = "%s"; }; };\n' %bootargs
-    fp = open(tmp_dts, 'a')
-    fp.write(chosen_frag)
-    fp.close()
+    fdt = dtbobj.to_fdt()
+
+    chosen = fdt.resolve_path('/chosen')
+    if chosen._find("bootargs"):
+        chosen.remove("bootargs")
+    chosen.append(FdtPropertyStrings("bootargs", [cmdline]))
 
     # Re-compile DTS into new DTB
     fd, dtb_modified = tempfile.mkstemp(suffix=".dtb")
     temp_files.append(dtb_modified)
+    os.write(fd, fdt.to_dtb())
     os.close(fd)
-    cmd = "dtc -I dts -O dtb -o %s %s > /dev/null 2>&1" %(dtb_modified, tmp_dts)
-    subprocess.call(cmd, shell=True)
-    os.unlink(tmp_dts)
     os.chmod(dtb_modified, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     if not quiet:
-        print("DTB: modified with bootargs: %s." %(bootargs,))
+        print("DTB: modified with bootargs: %s." %(cmdline,))
     return dtb_modified
 
 
