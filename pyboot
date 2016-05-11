@@ -48,7 +48,7 @@ import json
 import struct
 import fcntl
 import operator
-from pyfdt.pyfdt import FdtBlobParse, FdtPropertyWords, FdtPropertyStrings
+from pyfdt.pyfdt import FdtBlobParse, FdtPropertyWords, FdtPropertyStrings, FdtNode
 
 def usage():
     name = os.path.basename(sys.argv[0])
@@ -759,6 +759,9 @@ def dtb_insert_initrd(dtb, initrd_addr):
     initrd_end = initrd_start + initrd_size
 
     chosen = fdt.resolve_path('/chosen')
+    if not chosen:
+        chosen = FdtNode("chosen")
+        fdt.get_rootnode().append(chosen)
     if chosen._find("linux,initrd-start"):
         chosen.remove("linux,initrd-start")
     chosen.append(FdtPropertyWords("linux,initrd-start", [initrd_start]))
@@ -788,6 +791,9 @@ def dtb_insert_cmdline(dtb, cmdline):
     fdt = dtbobj.to_fdt()
 
     chosen = fdt.resolve_path('/chosen')
+    if not chosen:
+        chosen = FdtNode("chosen")
+        fdt.get_rootnode().append(chosen)
     if chosen._find("bootargs"):
         chosen.remove("bootargs")
     chosen.append(FdtPropertyStrings("bootargs", [cmdline]))
