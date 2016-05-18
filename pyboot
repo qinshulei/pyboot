@@ -1122,6 +1122,10 @@ if initrd:
     (initrd, initrd_addr) = path_addr_split(initrd)
     if initrd:
         initrd_size = os.path.getsize(initrd)
+        # if no DTB is given (legacy boot), then force initrd_uboot)
+        if not dtb:
+            initrd_uboot = True
+        # but override with config file setting
         if config.has_option(section, 'initrd_uboot'):
             initrd_uboot = config.getboolean(section, 'initrd_uboot')
     if not initrd_addr:
