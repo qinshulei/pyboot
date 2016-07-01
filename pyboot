@@ -760,7 +760,7 @@ def dtb_insert_initrd(dtb, initrd_addr):
     subprocess.call(cmd, shell=True)
 
     initrd_start = int(initrd_addr, 16)
-    initrd_end = initrd_start + initrd_size
+    initrd_end = initrd_start + initrd_size_z
     chosen_frag = "/ { chosen { linux,initrd-start = <0x%08x>; linux,initrd-end = <0x%08x>; }; };\n" %(initrd_start, initrd_end)
     fp = open(tmp_dts, 'a')
     fp.write(chosen_frag)
@@ -821,7 +821,7 @@ def initrd_add_uboot_header(initrd):
         if not quiet:
             print(("initrd: Added u-boot header.  Modified initrd: %s" %initrd_uboot_tmp))
         os.chmod(initrd_uboot_tmp, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-        initrd_size = os.path.getsize(initrd_uboot_tmp)
+        initrd_size_z = os.path.getsize(initrd_uboot_tmp)
         return initrd_uboot_tmp
     else:
         raise Exception("Unable to add u-boot header to initrd %s" %initrd)
@@ -981,7 +981,7 @@ loadaddr = None
 dtb = None
 dtb_addr = None
 initrd = None
-initrd_size = 0
+initrd_size_z = 0
 initrd_addr = None
 initrd_cmdline = False
 initrd_uboot = None
@@ -1121,7 +1121,7 @@ if not dtb:
 if initrd:
     (initrd, initrd_addr) = path_addr_split(initrd)
     if initrd:
-        initrd_size = os.path.getsize(initrd)
+        initrd_size_z = os.path.getsize(initrd)
         # if no DTB is given (legacy boot), then force initrd_uboot)
         if not dtb:
             initrd_uboot = True
@@ -1160,7 +1160,8 @@ if not quiet:
     print("Board:", board)
     print("Kernel:", kimage, loadaddr, "(endian: %s)" %endian)
     if initrd:
-        print("initrd:", initrd, initrd_addr, initrd_size)
+        initrd_size = subprocess.check_output("gunzip -l %s" %initrd, shell=True).splitlines()[1].split()[1]
+        print("initrd:", initrd, initrd_addr, initrd_size_z, initrd_size)
     if dtb:
         print("DTB:", dtb, end=' ')
         if dtb_append:
