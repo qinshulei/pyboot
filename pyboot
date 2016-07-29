@@ -1136,7 +1136,7 @@ if initrd:
 
     if initrd and modules:
         initrd = initrd_insert_modules(initrd, modules)
-        initrd_size = os.path.getsize(initrd)
+        initrd_size_z = os.path.getsize(initrd)
 
     boot_meta["initrd"] = initrd
     boot_meta["initrd_addr"] = initrd_addr
@@ -1336,7 +1336,7 @@ try:
             cmd = cmd.replace("{KERNEL}", kimage)
             if initrd:
                 cmd = cmd.replace("{RAMDISK}", initrd)
-                cmd = cmd.replace("{RAMDISK_SIZE}", "%d" % initrd_size)
+                cmd = cmd.replace("{RAMDISK_SIZE}", "%d" % initrd_size_z)
             boot_cmds.append(cmd)
             
         # send commands

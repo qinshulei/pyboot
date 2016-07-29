@@ -36,6 +36,9 @@ debug=debug initcall_debug
 mmcpart=/dev/mmcblk0p2
 rootfstype=ext4
 mmcroot=rw root=%(mmcpart)s rootwait rootfstype=%(rootfstype)s
+
+part_uuid: mmc 0:1
+partuuid_cmd: 'part uuid %(part_uuid)s uuid; setenv bootargs ${bootargs} rw root=PARTUUID=${uuid} rootwait'
 	
 [4430panda]
 loadaddr: 0x81000000
@@ -73,7 +76,7 @@ initrd_addr: 0x82000000
 initrd: %(initrd_armel)s
 # Default u-boot doesn't support 'bootz', neet to use bootm
 uimage_addr: xip
-bootargs: console=ttyO2,115200n8 debug earlyprintk ip=none %(mmcroot)s 
+bootargs: console=ttyO2,115200n8 debug earlyprintk
 
 [arndale]
 loadaddr: 0x41000000
@@ -145,7 +148,7 @@ dtb: %(dtb_base)s/am335x-bone.dtb
 initrd_addr: 0x82000000
 initrd: %(initrd_armel)s
 uboot_env:
-	bootargs=console=ttyO0,115200n8 debug earlyprintk
+	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [am335xboneb]
@@ -167,6 +170,7 @@ initrd: %(initrd_armel)s
 bootargs=console=ttyO0,115200n8 earlyprintk
 
 [acme]
+conmux_host: fitlet
 loadaddr: 0x81000000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
 dtb_addr: 0x81f00000
@@ -214,9 +218,9 @@ uboot_env:
 	bootargs=console=ttyS0,115200 debug earlyprintk
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
-	ipaddr=192.168.1.99
-	netmask=192.168.1.255
-#	gatewayip=192.168.1.254
+	ipaddr=192.168.0.99
+	netmask=192.168.0.255
+#	gatewayip=192.168.0.254
 #	netargs=%(setip_cmd)s
 
 [bananapi]
@@ -237,6 +241,16 @@ dtb: %(dtb_base)s/sun5i-r8-chip.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_armel)s
 bootargs=console=ttyS0,115200 debug earlyprintk %(mmcroot)s
+
+[sun8i-a83t-sinovoip-bpi-m3]
+conmux_host: fitlet
+loadaddr: 0x41000000
+dtb_addr: 0x42000000
+# HACK: until M3 DTB is upstream, use M2
+#dtb: %(dtb_base)s/sun8i-a83t-sinovoip-bpi-m3.dtb
+dtb: %(dtb_base)s/sun6i-a31s-sinovoip-bpi-m2.dtb
+initrd_addr: 0x43000000
+initrd: %(initrd_armel)s
 
 [pine64]
 arch: arm64
@@ -367,6 +381,7 @@ uboot_early: setenv stdout serial
 uart_fifo_hack: 32
 uboot_env:
 	preboot=usb start
+	gatewayip=192.168.0.254
 
 [meson8b-odroidc1]
 conmux_host: fitlet
@@ -385,13 +400,13 @@ uboot_env:
 conmux_host: fitlet
 arch: arm64
 image: %(basedir)s/Image
-loadaddr: 0x02000000
+loadaddr: 0x03000000
 # specific uImage addr needed with factory u-boot
 uimage_addr: 0x01080000
 dtb: %(dtb_base)s/amlogic/meson-gxbb-p200.dtb
-dtb_addr: 0x01f00000
+dtb_addr: 0x02f00000
 initrd: %(initrd_arm64)s
-initrd_addr: 0x03000000
+initrd_addr: 0x04000000
 bootargs: console=ttyAML0,115200
 #bootargs: console=ttyAML0,115200 earlycon=meson,0xc81004c0
 # DHCP doesn't work, broadcasts MAC addr all zeros
@@ -407,13 +422,13 @@ conmux_host: fitlet
 arch: arm64
 image: %(basedir)s/Image
 #loadaddr: 0x01080000
-loadaddr: 0x02000000
+loadaddr: 0x03000000
 # specific uImage addr needed with factory u-boot
 uimage_addr: 0x01080000
 dtb: %(dtb_base)s/amlogic/meson-gxbb-odroidc2.dtb
-dtb_addr: 0x01f00000
+dtb_addr: 0x02f00000
 initrd: %(initrd_arm64)s
-initrd_addr: 0x03000000
+initrd_addr: 0x04000000
 bootargs: console=ttyAML0,115200
 dhcp: false
 uboot_env:
@@ -517,13 +532,13 @@ dtb_addr: 0x81f00000
 dtb: %(dtb_base)s/omap5-uevm.dtb
 initrd_addr: 0x82000000
 #initrd: %(initrd_armel)s
-mmcpart: /dev/mmcblk1p2
+part_uuid: mmc 0:2
 uboot_env:
 	preboot=usb start
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
-	bootargs=console=ttyO2,115200n8 debug earlyprintk %(mmcroot)s
-	netargs=%(setip_cmd)s
+	bootargs="console=ttyO2,115200n8 earlyprintk"
+	netargs="%(partuuid_cmd)s; %(setip_cmd)s"
 
 [am43xevm]
 loadaddr: 0x81000000
@@ -537,6 +552,7 @@ bootargs: console=ttyO0,115200n8
 loadaddr: 0x81000000
 initrd_addr: 0x82000000
 initrd: %(initrd_armel)s
+initrd_uboot: True
 uboot_env:
 	bootargs=console=ttyS0,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
@@ -544,10 +560,9 @@ uboot_env:
 [da850evm]
 loadaddr: 0xc1000000
 dtb: %(dtb_base)s/da850-evm.dtb
-dtb_append: True
+dtb_addr: 0xc1f00000
 initrd_addr: 0xc2000000
 initrd: %(initrd_armel)s
-initrd_uboot: True
 uboot_env:
 	gatewayip=192.168.0.254
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
@@ -695,7 +710,8 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x02000000
 bootargs: console=ttyS2,115200 debug earlyprintk
 
-[jerry]
+[rk3288-veyron-jerry]
+conmux_host: fitlet
 coreboot: true
 its_template: /home/khilman/work/platforms/rockchip/jerry/veyron-template.its
 tftp_host: vence
@@ -715,6 +731,7 @@ dtb: %(dtb_base)s/bcm2835-rpi-b.dtb
 initrd_addr: 0x02000000
 initrd: %(initrd_armel)s
 bootargs: console=ttyAMA0 debug earlyprintk
+uart_fifo_hack: 8
 uboot_env:
 	preboot=usb start
 	netargs=%(setip_cmd)s
@@ -788,12 +805,12 @@ bootargs: console=ttyAMA0,115200n8
 conmux_host: fitlet
 loadaddr: 0x82000000
 dtb: %(dtb_base)s/vf610-colibri-eval-v3.dtb
-dtb_addr: 0x82f00000
+dtb_addr: 0x81f00000
 initrd: %(initrd_armel)s
 initrd_addr: 0x83000000
 bootargs: console=tty1 console=ttyLP0,115200n8 
-
-[bcm7252]
+	
+[bcm72521-bcm97252sffe]
 conmux_host: fitlet
 loadaddr: 0x01000000
 initrd: %(initrd_armel)s
@@ -823,5 +840,3 @@ bootloader_commands:
 [test]
 #init: mount -t proc none /proc; mount -t sysfs none /sys; mount -t debugfs none /sys/kernel/debug
 #tick: while true; do date; sleep 1; done
-hibernate_mt8173: swapon /dev/mmcblk1p2; echo disk > /sys/power/state
-#hibernate_juno: swapon /dev/sda2; echo disk > /sys/power/state
