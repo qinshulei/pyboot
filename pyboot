@@ -363,7 +363,10 @@ def boot_to_uboot():
 
         # Send "post_reset_ctrl" character as a control character right after reset
         if post_reset_ctrl:
-            time.sleep(4)
+            # on chromebook, must wait until board is powered up, which may take
+            # some time due to locking/delays in talking with PDU
+            # FIXME: need a way to detect when power cycle actually happends
+            time.sleep(10)
             progress("console: send post_reset_ctrl: %s" %post_reset_ctrl)
             for ch in post_reset_ctrl:
                 c.sendcontrol(ch)
