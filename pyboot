@@ -28,6 +28,7 @@
 # - instrument kernel backtraces for easy logging/coloring
 # - add 'console_host' option in config file for conmux
 # - support arch, mach, lab-name, etc. from ~/.pyboot 
+# - detect missing qemu binaries more gracefully
 #
 from __future__ import print_function
 import os
@@ -214,7 +215,7 @@ def do_report(retval=0, result=None):
     if not quiet:
         print(report)
 
-    if c.logfile:
+    if c and c.logfile:
         c.logfile.flush()
         c.logfile.write(report)
 
@@ -327,6 +328,9 @@ def chunkstring(line, n):
 def sendline(str):
     global c, uart_fifo_hack
 
+    if not c:
+        return
+
     if uart_fifo_hack:
         for chunk in chunkstring(str, uart_fifo_hack):
             c.send(chunk)
@@ -334,7 +338,7 @@ def sendline(str):
     else:
         c.sendline(str)
 
-def command(str, exp=None, timeout=-1):
+def command(str, exp=None, timeout=300):
     global prompt
 
     if debug:
@@ -652,8 +656,11 @@ def root_shell():
           'Unable to handle kernel (.*)\r\n',
     ]
     done = False
+    timeout = 120
+    if qemu:
+        timeout = 180
     while not done:
-        i = c.expect(pl, timeout=120)
+        i = c.expect(pl, timeout=180)
         if i == 0:
             done = True
         elif i == 1:
@@ -745,7 +752,8 @@ def do_tests():
 
 def poweroff():
     global c
-    c.sendline('~$off')
+    if c:
+        c.sendline('~$off')
 
 def dtb_insert_initrd(dtb, initrd_addr):
     """ Insert initrd start/end addresses into DTB.
@@ -919,6 +927,7 @@ lab_name = None
 board_name = None
 mach = None
 uart_fifo_hack = None
+c = None
 
 try:
     opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:M:n:qstu:vwy")
@@ -1409,10 +1418,11 @@ try:
 
 except Exception as e:
     # ensure we read any remaining input
-    c.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=1)
+    if c:
+        c.expect([pexpect.EOF, pexpect.TIMEOUT], timeout=1)
     progress('got exception: %s' % e)
     poweroff()
-    if c.logfile:
+    if c and c.logfile:
         c.logfile.write('# PYBOOT: Exception: %s\n' %e)
 
     boot_result_description = "%s" %e
@@ -1424,7 +1434,7 @@ except Exception as e:
         do_report(1)
 
 finally:
-    if c.logfile:
+    if c and c.logfile:
         c.logfile.close()
 
     if locking and lock_fd:
@@ -1435,8 +1445,9 @@ finally:
     log_base = os.path.dirname(logfile)
     if log_base and not os.path.exists(log_base):
         os.mkdir(log_base)
-    cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
-    subprocess.call(cmd, shell=True)
+    if exp_logfile:
+        cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
+        subprocess.call(cmd, shell=True)
 
     tftp_cleanup()
     for f in temp_files:
