@@ -10,7 +10,7 @@
 [DEFAULT]
 arch: arm
 conmux_host: vence
-serverip: 192.168.1.2
+serverip: 192.168.0.4
 tftproot: /tftpboot
 basedir: arch/%(arch)s/boot
 image: %(basedir)s/zImage
@@ -567,6 +567,21 @@ uboot_env:
 	gatewayip=192.168.0.254
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
 
+[da850-lcdk]
+uimage_addr: xip
+conmux_host: fitlet
+loadaddr: 0xc1000000
+dtb: %(dtb_base)s/da850-lcdk.dtb
+#dtb_addr: 0xc1f00000
+dtb_append: True
+initrd_addr: 0xc2000000
+initrd: %(initrd_armel)s
+uboot_env:
+        preboot=sleep 1
+        gatewayip=192.168.0.254
+        bootargs=console=ttyS2,115200n8
+        netargs=%(setip_cmd)s
+
 [dragon]
 fastboot: True
 dtb: %(dtb_base)s/qcom-apq8074-dragonboard.dtb 
@@ -714,7 +729,7 @@ bootargs: console=ttyS2,115200 debug earlyprintk
 conmux_host: fitlet
 coreboot: true
 its_template: /home/khilman/work/platforms/rockchip/jerry/veyron-template.its
-tftp_host: vence
+tftp_host: fitlet
 tftp_dir: /tftpboot/chrome-bot/veyron_jerry
 tftp_filename: vmlinuz
 dtb: %(dtb_base)s/rk3288-veyron-jerry.dtb
