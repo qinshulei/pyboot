@@ -275,6 +275,7 @@ def connect_console():
     else:
         kwargs = {}
     if qemu:
+        boot_meta["qemu_version"] = subprocess.check_output("%s -version" % qemu, shell=True)
         qemu_cmd = "%s -nographic %s -kernel %s" %(qemu, qemu_args, kimage)
         if dtb:
             qemu_cmd += " -dtb %s" %dtb
