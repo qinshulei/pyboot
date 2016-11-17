@@ -252,15 +252,16 @@ dtb: %(dtb_base)s/sun6i-a31s-sinovoip-bpi-m2.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_armel)s
 
-[pine64]
+[sun50i-a64-pine64]
+conmux_host: fitlet
 arch: arm64
 image: %(basedir)s/Image
 loadaddr: 0x41000000
-dtb_addr: 0x42000000
-dtb: %(dtb_base)s/allwinner/pine64.dtb
+dtb_addr: 0x42f00000
+dtb: %(dtb_base)s/allwinner/sun50i-a64-pine64.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_arm64)s
-bootargs=console=console=ttyS0,115200n8 earlycon=uart,mmio32,0x01c28000 debug earlyprintk
+#bootargs=console=console=ttyS0,115200n8 earlycon=uart,mmio32,0x01c28000 debug earlyprintk
 
 [helium]
 loadaddr: 0x01000000
@@ -298,6 +299,12 @@ uboot_env:
 	bootargs=console=ttymxc0,115200
 	netargs=%(setip_cmd)s
 
+[imx7s-warp]
+dtb: %(dtb_base)s/imx6q-wandboard.dtb
+initrd: %(initrd_armel)s
+uboot_env:
+	preboot=ums 0 mmc 0
+	
 [sama5d3]
 uimage_addr: 0x20008000
 loadaddr: 0x21000000
@@ -557,6 +564,20 @@ uboot_env:
 	bootargs=console=ttyS0,115200n8 debug earlyprintk
 	initrd_high=0xffffffff
 
+[da830-evm]
+conmux_host: fitlet
+uimage_addr: xip
+loadaddr: 0xc1000000
+#dtb: %(dtb_base)s/da850-evm.dtb
+#dtb_addr: 0xc1f00000
+initrd_addr: 0xc2000000
+initrd: %(initrd_armel)s
+initrd_uboot: False
+uboot_env:
+	gatewayip=192.168.0.254
+#	bootargs=console=ttyS2,115200n8 debug earlyprintk
+	bootargs=console=ttyS2,115200n8 debug earlyprintk initrd=%(initrd_addr)s
+
 [da850evm]
 loadaddr: 0xc1000000
 dtb: %(dtb_base)s/da850-evm.dtb
@@ -580,7 +601,7 @@ uboot_env:
         preboot=sleep 1
         gatewayip=192.168.0.254
         bootargs=console=ttyS2,115200n8
-        netargs=%(setip_cmd)s
+#        netargs=%(setip_cmd)s
 
 [dragon]
 fastboot: True
@@ -664,7 +685,9 @@ initrd_addr: 0x42000000
 # Internal emmc
 #mmcpart: /dev/mmcblk0p3
 # External SD card
-mmcpart: /dev/mmcblk1p3
+#mmcpart: /dev/mmcblk1p3
+#mmcpart: /dev/mmcblk2p3
+mmcpart: PARTUUID=62ef07b3-b575-7241-9847-bbfa6e2de316
 rootfstype: ext3
 # need to send Ctrl-U after reset to boot from SD card
 post_reset_ctrl: U
@@ -826,6 +849,19 @@ initrd_addr: 0x83000000
 bootargs: console=tty1 console=ttyLP0,115200n8 
 	
 [bcm72521-bcm97252sffe]
+conmux_host: fitlet
+loadaddr: 0x01000000
+initrd: %(initrd_armel)s
+initrd_addr: 0x02000000
+initrd_uboot: false
+bootargs: root=/dev/ram0 initrd=%(initrd_addr)s,{RAMDISK_SIZE} earlyprintk
+bootloader_prompt = BOLT>
+bootloader_commands:
+	ifconfig eth0 -auto
+	load -raw -tftp -addr=%(initrd_addr)s %(serverip)s:{RAMDISK}
+	boot -zimg -tftp -addr=%(loadaddr)s %(serverip)s:{KERNEL} "%(bootargs)s"
+
+[bcm7445-bcm97445c]
 conmux_host: fitlet
 loadaddr: 0x01000000
 initrd: %(initrd_armel)s
