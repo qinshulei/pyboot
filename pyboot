@@ -360,12 +360,10 @@ def command(str, exp=None, timeout=300):
 
 def boot_to_uboot():
     global prompt, post_reset_ctrl, bootloader_custom
-    hardreset = True
     
     breakin = False
     while not breakin:
-        if hardreset:
-            c.sendline('~$hardreset')
+        c.sendline('~$hardreset')
 
         # Send "post_reset_ctrl" character as a control character right after reset
         if post_reset_ctrl:
@@ -390,11 +388,7 @@ def boot_to_uboot():
         if i == 0:
             breakin = True
         elif i == 1:
-            if "sun4i-a10-cubieboard" in dtb:
-                progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
-                hardreset = True
-            else:
-                hardreset = False
+            progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
             continue
         elif i == 2:
             progress('u-boot: fastboot mode detected.')
