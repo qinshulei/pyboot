@@ -658,9 +658,9 @@ def root_shell():
     done = False
     timeout = 120
     if qemu:
-        timeout = 180
+        timeout = 500
     while not done:
-        i = c.expect(pl, timeout=180)
+        i = c.expect(pl, timeout=timeout)
         if i == 0:
             done = True
         elif i == 1:
@@ -1304,7 +1304,11 @@ if coreboot:
 
 lock_fp = lock_fd = None
 if locking:
-    lockfile = os.path.join(tempfile.gettempdir(), "pyboot-%s.lock" %board)
+    if qemu:
+        # only allow a single QEMU instance at a time (HACK for resource constraint host/server)
+        lockfile = os.path.join(tempfile.gettempdir(), "pyboot-qemu.lock")
+    else:
+        lockfile = os.path.join(tempfile.gettempdir(), "pyboot-%s.lock" %board)
     if os.path.exists(lockfile):
         lock_fp = open(lockfile, "w")
     else:
