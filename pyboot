@@ -922,6 +922,7 @@ dry_run = False
 quiet = False
 prompt = ''
 logfile = None
+logfile_append = False
 exp_logfile = None
 run_tests = False
 check_warnings = False
@@ -937,15 +938,17 @@ uart_fifo_hack = None
 c = None
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ab:c:dhil:L:m:M:n:qstu:vwy")
+    opts, args = getopt.getopt(sys.argv[1:], "Aab:c:dhil:L:m:M:n:qstu:vwy")
 
 except getopt.GetoptError as err:
     print(str(err)) # will print something like "option -a not recognized"
     sys.exit(2)
 for o, a in opts:
-    if o == "-a":
+    if o == "-A":
+        logfile_append = True
+    elif o == "-a":
         dtb_append = True
-    if o == "-b":
+    elif o == "-b":
         build_json_file = a
     elif o == "-c":
         cmdline_append = a
@@ -1457,7 +1460,10 @@ finally:
     if log_base and not os.path.exists(log_base):
         os.mkdir(log_base)
     if exp_logfile:
-        cmd = "tr -dc \'[:print:]\n\' < %s > %s" %(exp_logfile, logfile)
+        redir = '>'
+        if logfile_append:
+            redir = '>>'
+        cmd = "tr -dc \'[:print:]\n\' < %s %s %s" %(exp_logfile, redir, logfile)
         subprocess.call(cmd, shell=True)
 
     tftp_cleanup()
