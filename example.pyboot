@@ -256,11 +256,13 @@ initrd: %(initrd_armel)s
 conmux_host: fitlet
 arch: arm64
 image: %(basedir)s/Image
-loadaddr: 0x41000000
-dtb_addr: 0x42f00000
+loadaddr: ${kernel_addr_r}
+dtb_addr: ${fdt_addr_r}
 dtb: %(dtb_base)s/allwinner/sun50i-a64-pine64.dtb
-initrd_addr: 0x43000000
+initrd_addr: ${ramdisk_addr_r}
 initrd: %(initrd_arm64)s
+# when using uboot env for initrd_addr, let uboot pass initrd
+initrd_uboot: True
 
 [helium]
 loadaddr: 0x01000000
@@ -442,6 +444,27 @@ uboot_env:
         ipaddr=192.168.0.96
         netmask=255.255.255.0
         gatewayip=192.168.0.254
+
+[meson-gxl-s905d-p230]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxl-s905d-p230.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+# DHCP doesn't work, broadcasts MAC addr all zeros
+dhcp: false
+uboot_env:
+        preboot=
+        ipaddr=192.168.0.95
+        netmask=255.255.255.0
+        gatewayip=192.168.0.254
+        netargs=%(setip_cmd)s
 
 [osk]
 uimage_addr: 0x10008000
