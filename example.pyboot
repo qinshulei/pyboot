@@ -252,7 +252,7 @@ dtb: %(dtb_base)s/sun6i-a31s-sinovoip-bpi-m2.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_armel)s
 
-[sun50i-a64-pine64]
+[sun50i-a64-pine64-plus]
 conmux_host: fitlet
 arch: arm64
 image: %(basedir)s/Image
@@ -302,10 +302,11 @@ uboot_env:
 
 [imx7s-warp]
 conmux_host: fitlet
-dtb: %(dtb_base)s/imx6q-wandboard.dtb
+loadaddr: 0x81000000
+dtb: %(dtb_base)s/imx7s-warp.dtb
+dtb_addr: 0x82f00000
 initrd: %(initrd_armel)s
-uboot_env:
-	preboot=ums 0 mmc 0
+initrd_addr: 0x83000000
 	
 [sama5d3]
 uimage_addr: 0x20008000
@@ -415,7 +416,7 @@ uimage_addr: 0x01080000
 dtb: %(dtb_base)s/amlogic/meson-gxbb-p200.dtb
 dtb_addr: 0x02f00000
 initrd: %(initrd_arm64)s
-initrd_addr: 0x04000000
+initrd_addr: 0x05000000
 bootargs: console=ttyAML0,115200
 #bootargs: console=ttyAML0,115200 earlycon=meson,0xc81004c0
 # DHCP doesn't work, broadcasts MAC addr all zeros
@@ -437,7 +438,7 @@ uimage_addr: 0x01080000
 dtb: %(dtb_base)s/amlogic/meson-gxbb-odroidc2.dtb
 dtb_addr: 0x02f00000
 initrd: %(initrd_arm64)s
-initrd_addr: 0x04000000
+initrd_addr: 0x05000000
 bootargs: console=ttyAML0,115200
 dhcp: false
 uboot_env:
@@ -493,21 +494,20 @@ uboot_env:
 	bootargs=console=ttyAMA2,115200n8 debug earlyprintk %(mmcroot)s
 
 [st-b2120]
+# NOTE: DT on this board has reserved memory from 0x40000000 - 0x44000000
 uimage_addr: xip
-#loadaddr: 0x41000000
-loadaddr: 0x42000000
+loadaddr: 0x45000000
 dtb: %(dtb_base)s/stih410-b2120.dtb
-#dtb_addr: 0x41f00000
-dtb_addr: 0x42f00000
-#initrd_addr: 0x42000000
-initrd_addr: 0x43000000
+dtb_addr: 0x44f00000
+initrd_addr: 0x46000000
 initrd: %(initrd_armel)s
 mmcpart: mmcblk0p1
-#bootargs: console=ttyAS0,115200 clk_ignore_unused debug earlyprintk ip=dhcp
+bootargs: console=ttyAS0,115200 clk_ignore_unused
 uboot_env:
 	ethaddr=E0:85:97:BA:A8:6F 
 	fdt_high=0xffffffff
 #	netargs=%(setip_cmd)s
+	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
 
 [odroid-xu]
 loadaddr: 0x41000000
