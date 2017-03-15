@@ -1,3 +1,4 @@
+
 # 
 # Special (optional) u-boot environment variables used by pyboot
 #
@@ -307,7 +308,8 @@ dtb: %(dtb_base)s/imx7s-warp.dtb
 dtb_addr: 0x82f00000
 initrd: %(initrd_armel)s
 initrd_addr: 0x83000000
-	
+bootargs: console=ttymxc0,115200
+
 [sama5d3]
 uimage_addr: 0x20008000
 loadaddr: 0x21000000
@@ -343,7 +345,7 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x22000000
 eth_dev: eth0
 uboot_env:
-	bootargs="console=ttyS0,115200 console=ttyAT0,115200"
+	bootargs="console=ttyS0,115200 console=ttyAT0,115200 earlyprintk"
 	netargs=%(setip_cmd)s
 
 [mirabox]
@@ -423,6 +425,7 @@ bootargs: console=ttyAML0,115200
 dhcp: false
 uboot_env:
         preboot=
+# 	verify=no
         ipaddr=192.168.0.97
         netmask=255.255.255.0
         gatewayip=192.168.0.254
@@ -458,7 +461,7 @@ dtb_addr: 0x02f00000
 initrd: %(initrd_arm64)s
 initrd_addr: 0x05000000
 bootargs: console=ttyAML0,115200
-# DHCP doesn't work, broadcasts MAC addr all zeros
+# DHCP doesn't work, broadcasts MAC addr all zeros (fixed in 2016-09-30)
 dhcp: false
 uboot_env:
         preboot=
@@ -466,6 +469,94 @@ uboot_env:
         netmask=255.255.255.0
         gatewayip=192.168.0.254
         netargs=%(setip_cmd)s
+
+[meson-gxm-nexbox-a1]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxm-nexbox-a1.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+# DHCP doesn't work, broadcasts MAC addr all zeros (fixed in 2016-09-30)
+dhcp: false
+uboot_env:
+	preboot="setenv ipaddr 192.168.0.94; setenv netmask 255.255.255.0; setenv serverip 192.168.0.4; tftp 0x01000000 u-boot10H.bin; go 0x01000000"
+	netargs=dhcp
+        #preboot=
+#	ipaddr=192.168.0.94
+#        netmask=255.255.255.0
+#        gatewayip=192.168.0.254
+#        netargs=%(setip_cmd)s
+
+[meson-gxl-s905x-nexbox-a95x]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxl-nexbox-a95x.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+# DHCP doesn't work, broadcasts MAC addr all zeros (fixed in 2016-09-30)
+dhcp: false
+uboot_env:
+        preboot=
+        ipaddr=192.168.0.93
+        netmask=255.255.255.0
+        gatewayip=192.168.0.254
+        netargs=%(setip_cmd)s
+
+[meson-gxl-s905x-p212]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxl-s905x-p212.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+uart_fifo_hack: 4
+uboot_env:
+        preboot=
+#        ipaddr=192.168.0.92
+#        netmask=255.255.255.0
+#        gatewayip=192.168.0.254
+#        netargs=%(setip_cmd)s
+
+[meson-gxbb-wetek-hub]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+#uimage_addr: 0x01080000
+#uimage_addr: xip
+dtb: %(dtb_base)s/amlogic/meson-gxbb-wetek-hub.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+# DHCP doesn't work, broadcasts MAC addr all zeros (fixed in 2016-09-30)
+dhcp: false
+uart_fifo_hack: 2
+uboot_env:
+        preboot="setenv ipaddr 192.168.0.92; setenv netmask 255.255.255.0; setenv serverip 192.168.0.4; tftp 0x01000000 u-boot.bin; go 0x01000000"
+#	verify=no
+#        ipaddr=192.168.0.92
+#        netmask=255.255.255.0
+#        gatewayip=192.168.0.254
+#        netargs=%(setip_cmd)s
 
 [osk]
 uimage_addr: 0x10008000
@@ -494,12 +585,12 @@ uboot_env:
 	bootargs=console=ttyAMA2,115200n8 debug earlyprintk %(mmcroot)s
 
 [st-b2120]
-# NOTE: DT on this board has reserved memory from 0x40000000 - 0x44000000
+# NOTE: DT on this board has reserved memory from 0x40000000 - 0x45000000
 uimage_addr: xip
-loadaddr: 0x45000000
+loadaddr: 0x46000000
 dtb: %(dtb_base)s/stih410-b2120.dtb
-dtb_addr: 0x44f00000
-initrd_addr: 0x46000000
+dtb_addr: 0x45f00000
+initrd_addr: 0x47000000
 initrd: %(initrd_armel)s
 mmcpart: mmcblk0p1
 bootargs: console=ttyAS0,115200 clk_ignore_unused
@@ -607,6 +698,7 @@ dtb_addr: 0xc1f00000
 initrd_addr: 0xc2000000
 initrd: %(initrd_armel)s
 uboot_env:
+	ethaddr=ce:49:b1:88:02:bb
 	gatewayip=192.168.0.254
 	bootargs=console=ttyS2,115200n8 debug earlyprintk
 

@@ -391,10 +391,11 @@ def boot_to_uboot():
         if i == 0:
             breakin = True
         elif i == 1:
-            if "sun4i-a10-cubieboard" in dtb:
+            if "sun4i-a10-cubieboard" in dtb_orig:
                 progress('u-boot: HACK: Cubie: old, on-chip bootloader detected.  Resetting again.')
                 hardreset = True
             else:
+                progress('u-boot: HACK: Not a sun4i-a10-cubieboard.  Ignoring: %s' %dtb_orig)
                 hardreset = False
             continue
         elif i == 2:
@@ -530,13 +531,14 @@ def load_image(file, addr):
         i = c.expect(['Bytes transferred', 
                       'TFTP error',
                       'Unknown command',
+                      'No link',
                       'Retry count exceeded',
                       pexpect.TIMEOUT],
                      timeout=180)
         if (i == 0):
             j = c.expect([prompt, pexpect.TIMEOUT])
             if j != 0:
-                raise Exception("u-boot: ERROR: No prompt after TFTP transfer")
+                raise Exception("u-boot: ERROR: No prompt after TFTP transfer", OFFLINE)
             break
         elif (i == 1):
             raise Exception('ERROR: TFTP error.')
@@ -547,15 +549,17 @@ def load_image(file, addr):
                 c.expect(prompt)
             else:
                 raise Exception("ERROR: u-boot doesn't support TFTP")
+        elif (i == 3):
+            raise Exception("ERROR: u-boot: No network connection", "OFFLINE")
         else:
             if retries:
                 progress('u-boot: timeout loading %s, Trying again.' %file, log=True)
                 c.send('\003')  # Ctrl-C: abort current tftp
                 j = c.expect([prompt, pexpect.TIMEOUT])
                 if j != 0:
-                    raise Exception("u-boot: ERROR: No prompt after interrupting TFTP.")
+                    raise Exception("u-boot: ERROR: No prompt after interrupting TFTP.", OFFLINE)
             else:
-                raise Exception('ERROR: Timeout loading %s.  Giving up.' %file)
+                raise Exception('ERROR: Timeout loading %s.  Giving up.' %file, OFFLINE)
 
 def boot_kernel():
     global prompt, initrd_addr
@@ -709,6 +713,7 @@ def check_errors_warnings():
     #        kernel messgages (like USB devices appearing on mirabox.)  To prevent
     #        strange interactions, turn off kernel message output to console.
     command('dmesg -n 1')  # prevent kernel message output from interfering with this
+    command('dmesg -n 1')  # prevent kernel message output from interfering with this
     # "dmesg -l" requires "real" dmesg, not busybox dmesg
     command('DMESG=$(readlink -f /bin/dmesg)')
     command('[[ $DMESG = "/bin/dmesg" ]] && dmesg -l warn | awk \'{ print "[WARN] " $0 }\'')
@@ -848,6 +853,7 @@ def initrd_insert_modules(initrd, modules):
     initrd_tmpdir = tempfile.mkdtemp(prefix="initrd-")
     temp_files.append(initrd_tmpdir)
     fd, initrd_new = tempfile.mkstemp(prefix="initrd-", suffix=".cpio")
+    temp_files.append(initrd_new)
 
     # extract ramdisk into tmp dir
     if initrd.endswith(".cpio"):
@@ -1199,6 +1205,7 @@ start_time = time.time()
 time_start('total')
 time_start('setup')
 
+dtb_orig = dtb
 if dtb and initrd_addr and not initrd_uboot:
     dtb = dtb_insert_initrd(dtb, initrd_addr)
 if dtb and bootargs:
@@ -1207,7 +1214,7 @@ if dtb and bootargs:
     dtb = dtb_insert_cmdline(dtb, bootargs)
 
 if dtb and dtb_append:
-    fd, kimage_appended = tempfile.mkstemp(prefix="zImage-dtb-")
+    fd, kimage_appended = tempfile.mkstemp(prefix="%s-dtb-" %kimage)
     temp_files.append(kimage_appended)
     subprocess.call('cat %s %s > %s' \
                         %(kimage, dtb, kimage_appended), shell=True)
