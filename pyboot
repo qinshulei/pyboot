@@ -14,7 +14,7 @@
 #
 # Reads config file from /etc/pyboot.conf, $PWD/.pyboot and ~/.pyboot
 #
-# Authors: 
+# Authors:
 #   Olof Johansson <olof@lixom.net>
 #   Kevin Hilman <khilman@kernel.org>
 #
@@ -27,7 +27,7 @@
 #   - needs to handle current post-dhcp init (via netargs)
 # - instrument kernel backtraces for easy logging/coloring
 # - add 'console_host' option in config file for conmux
-# - support arch, mach, lab-name, etc. from ~/.pyboot 
+# - support arch, mach, lab-name, etc. from ~/.pyboot
 # - detect missing qemu binaries more gracefully
 #
 from __future__ import print_function
@@ -155,11 +155,11 @@ def tftp_relpath(path):
 
     if path.startswith(tftproot):
         # already in TFTP root, no need to copy, just drop TFTP root prefix
-        path = path[len(tftproot)+1:]  
+        path = path[len(tftproot)+1:]
     else:
         shutil.copy(path, tftpdir)
         path = os.path.join(tftprel, os.path.basename(path))
-        
+
     return path
 
 def tftp_cleanup():
@@ -260,7 +260,7 @@ class dummy_expect:
         return 0
     def before(self):
         return 'BEFORE'
-        
+
 def connect_console():
     """ Spawn and connect to serial console (via conmux). """
     global c, verbose, exp_logfile
@@ -305,14 +305,14 @@ def connect_console():
     # twice)
     #
     if verbose:
-        c.logfile_read = sys.stdout 
+        c.logfile_read = sys.stdout
 
     if qemu:
         # QEMU goes directly to booting the kernel
         progress("qemu: connected using: %s" %qemu_cmd, log=True)
         return;
 
-    i = c.expect(["Connected to", 
+    i = c.expect(["Connected to",
                   pexpect.TIMEOUT, pexpect.EOF])
     if i == 0:
         # connected normally
@@ -345,7 +345,7 @@ def command(str, exp=None, timeout=300):
     if debug:
         progress('cmd: %s' % str)
     sendline(str)
-    i = c.expect([exp or prompt, 
+    i = c.expect([exp or prompt,
                   pexpect.EOF,
                   pexpect.TIMEOUT], timeout=timeout)
     if i == 0:
@@ -362,7 +362,7 @@ def command(str, exp=None, timeout=300):
 def boot_to_uboot():
     global prompt, post_reset_ctrl, bootloader_custom
     hardreset = True
-    
+
     breakin = False
     while not breakin:
         if hardreset:
@@ -432,7 +432,7 @@ def boot_to_uboot():
     if prompt.endswith('$'):
         prompt = prompt[:-1] + "\$"
 
-    # due to the extra <enter> press above, need to flush the 2nd prompt from 
+    # due to the extra <enter> press above, need to flush the 2nd prompt from
     # the input buffer.  Note that 2nd prompt wont be there when 2 keypresses
     # are actually needed, so timeout quickly)
     c.expect([prompt, pexpect.TIMEOUT], timeout=0.2)
@@ -463,11 +463,11 @@ def init_uboot_env():
             # netboot method
             if key == "bootcmd":
                 custom_boot = True
-        
+
         # if bootargs is set outside of uboot_env, it overrides this one
         if bootargs:
             command('setenv bootargs %s' %bootargs)
-        
+
     command('if test -n ${initenv}; then run initenv; fi')
     command('if test -n ${preboot}; then run preboot; fi')
 
@@ -528,7 +528,7 @@ def load_image(file, addr):
     while retries:
         sendline('%s %s %s' %(tftp_cmd, addr, file))
         retries = retries - 1
-        i = c.expect(['Bytes transferred', 
+        i = c.expect(['Bytes transferred',
                       'TFTP error',
                       'Unknown command',
                       'No link',
@@ -629,7 +629,7 @@ def wait_for_kernel():
               '(Unhandled fault.*)\r\n',
               pexpect.TIMEOUT]
         i = c.expect(pl, timeout=90)
-        if i == 0 or i == 1 or i == 2:  
+        if i == 0 or i == 1 or i == 2:
             # Kernel booted normally
             done = True
         elif i == 3:
@@ -685,7 +685,7 @@ def root_shell():
             progress('kernel: %s' %msg, log=True)
         else:
             raise Exception('userspace: failed to find root shell: %s' %pl[i])
-    
+
     progress("userspace: at root shell", log=True)
 
 def userspace_info():
@@ -739,9 +739,9 @@ def run_test(test, cmd):
         pass_fail = 'PASS'
     else:
         pass_fail = 'FAIL'
-        
+
     progress("test: %s: returned %d: %s"  %(test, retval, pass_fail), log=True)
-    
+
 def do_tests():
     # Board-specific tests
     for o in config.options(section):
@@ -769,7 +769,7 @@ def poweroff():
 
 def dtb_insert_initrd(dtb, initrd_addr):
     """ Insert initrd start/end addresses into DTB.
-    
+
     NOTE: we could use fdtput for this but the original DTB needs to have
     enough padding in it for the new commandline, which is not guaranteed.
     """
@@ -837,7 +837,7 @@ def initrd_add_uboot_header(initrd):
     basename = os.path.basename(initrd)
     fd, initrd_uboot_tmp = tempfile.mkstemp(prefix=basename, suffix=".uboot")
     temp_files.append(initrd_uboot_tmp)
-    os.close(fd) 
+    os.close(fd)
     cmd = "mkimage -A %s -O linux -T ramdisk -C none -a 0 -e 0 -n %s -d %s %s > /dev/null" %(arch, basename, initrd, initrd_uboot_tmp)
     subprocess.call(cmd, shell=True)
     if os.path.exists(initrd_uboot_tmp):
@@ -994,7 +994,7 @@ for o, a in opts:
         check_warnings = True
     else:
         assert False, "unhandled option %s" %o
- 
+
 if len(args) < 1:
     usage()
     sys.exit(1)
@@ -1090,7 +1090,7 @@ if config.has_option(section, 'uart_fifo_hack'):
 arch = "arm"
 if config.has_option(section, "arch"):
     arch = config.get(section, "arch")
-    
+
 if len(args) > 1:
     kimage = args[1]
 if len(args) > 2:
@@ -1129,7 +1129,7 @@ if not loadaddr:
 
 boot_meta["kernel_image"] = kimage
 boot_meta["loadaddr"] = loadaddr
-    
+
 if dtb:
     (dtb, dtb_addr) = path_addr_split(dtb)
     if not dtb_addr:
@@ -1330,7 +1330,7 @@ if locking:
         lock_fp = open(lockfile, "w")
     else:
         lock_fp = open(lockfile, "w")
-        os.chmod(lockfile, stat.S_IRUSR | stat.S_IWUSR | 
+        os.chmod(lockfile, stat.S_IRUSR | stat.S_IWUSR |
                  stat.S_IRGRP | stat.S_IWGRP |
                  stat.S_IROTH | stat.S_IWOTH)
 
@@ -1357,7 +1357,7 @@ try:
 
         if not config.has_option(section, "bootloader_commands"):
             raise Exception("bootloader_custom: missing bootloader_commands.  Giving up.")
-            
+
         bootloader_prompt = config.get(section, "bootloader_prompt")
         bootloader_commands = config.get(section, "bootloader_commands")
 
@@ -1371,7 +1371,7 @@ try:
                 cmd = cmd.replace("{RAMDISK}", initrd)
                 cmd = cmd.replace("{RAMDISK_SIZE}", "%d" % initrd_size_z)
             boot_cmds.append(cmd)
-            
+
         # send commands
         for cmd in boot_cmds[0:-1]:
             command(cmd, bootloader_prompt, timeout=120)
@@ -1379,7 +1379,7 @@ try:
         # the last command is expected to boot the kernel, don't wait for it
         cmd = boot_cmds[-1]
         c.sendline(cmd)
-        
+
     elif custom_boot:
         # Just run 'boot' using bootcmd from u-boot env
         command('boot')
@@ -1409,7 +1409,7 @@ try:
     if cmdline_append and cmdline_append.find("quiet") >= 0:
         quiet_kernel = True
         progress("kernel: starting quiet kernel (no serial output)")
-                 
+
     time_start('kernel')
     if not quiet_kernel:
         wait_for_kernel()
@@ -1450,7 +1450,7 @@ except Exception as e:
     boot_meta["boot_result_description"] = boot_result_description.rstrip()
     # e.args[0] is message, e.args[1] (if present) is result code
     if len(e.args) > 1:
-        do_report(1, e.args[1])  # pass result 
+        do_report(1, e.args[1])  # pass result
     else:
         do_report(1)
 

@@ -1,5 +1,5 @@
 
-# 
+#
 # Special (optional) u-boot environment variables used by pyboot
 #
 #   initenv: command run early to initialize env (e.g. load uEnv.txt from MMC)
@@ -40,7 +40,7 @@ mmcroot=rw root=%(mmcpart)s rootwait rootfstype=%(rootfstype)s
 
 part_uuid: mmc 0:1
 partuuid_cmd: 'part uuid %(part_uuid)s uuid; setenv bootargs ${bootargs} rw root=PARTUUID=${uuid} rootwait'
-	
+
 [4430panda]
 loadaddr: 0x81000000
 dtb_addr: 0x81f00000
@@ -68,7 +68,7 @@ uboot_env:
 	initrd_high=0xffffffff
 	bootargs=console=ttyO2,115200n8 debug earlyprintk
 	netargs=%(setip_cmd)s
-          
+
 [duovero]
 loadaddr: 0x81000000
 dtb_addr: 0x81f00000
@@ -131,7 +131,7 @@ uboot_env:
 	ethaddr=fe:06:88:cd:08:6f
 	bootargs=console=ttyO2,115200n8 earlyprintk debug
 	netargs=%(setip_cmd)s
-	
+
 [3730storm]
 loadaddr: 0x81000000
 dtb_addr: 0x81f00000
@@ -214,7 +214,7 @@ dtb: %(dtb_base)s/sun7i-a20-cubietruck.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_armel)s
 # u-boot can't do DHCP, but kernel can.   Upgrade u-boot?
-dhcp: False  
+dhcp: False
 uboot_env:
 	bootargs=console=ttyS0,115200 debug earlyprintk
 	fdt_high=0xffffffff
@@ -340,7 +340,7 @@ uboot_env:
 uimage_addr: 0x20008000
 loadaddr: 0x21000000
 dtb_addr: 0x21f00000
-dtb: %(dtb_base)s/at91-sama5d3_xplained.dtb 
+dtb: %(dtb_base)s/at91-sama5d3_xplained.dtb
 initrd: %(initrd_armel)s
 initrd_addr: 0x22000000
 eth_dev: eth0
@@ -574,8 +574,8 @@ dtb_append: True
 initrd_addr: 0x03000000
 initrd: %(initrd_armel)s
 rootfstype: ext3
-# internal eMMC 
-mmcpart: /dev/mmcblk0p3  
+# internal eMMC
+mmcpart: /dev/mmcblk0p3
 # external SD card
 #mmcpart: /dev/mmcblk1p2
 initrd_uboot: true
@@ -595,7 +595,7 @@ initrd: %(initrd_armel)s
 mmcpart: mmcblk0p1
 bootargs: console=ttyAS0,115200 clk_ignore_unused
 uboot_env:
-	ethaddr=E0:85:97:BA:A8:6F 
+	ethaddr=E0:85:97:BA:A8:6F
 	fdt_high=0xffffffff
 #	netargs=%(setip_cmd)s
 	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
@@ -719,7 +719,7 @@ uboot_env:
 
 [dragon]
 fastboot: True
-dtb: %(dtb_base)s/qcom-apq8074-dragonboard.dtb 
+dtb: %(dtb_base)s/qcom-apq8074-dragonboard.dtb
 initrd: %(initrd_armel)s
 bootargs: console=ttyMSM0,115200,n8 debug earlyprintk
 
@@ -757,7 +757,7 @@ bootargs: console=ttyMSM0,115200,n8 debug earlyprintk
 
 [capri]
 fastboot: True
-dtb: %(dtb_base)s/bcm28155-ap.dtb 
+dtb: %(dtb_base)s/bcm28155-ap.dtb
 
 # By default, capri is using a file-system in MMC, but the below can be used
 # to use an initrd (which first will be flashed to MMC also)
@@ -771,7 +771,7 @@ uboot_env:
 
 [n900]
 fastboot: True
-dtb: %(dtb_base)s/omap3-n900.dtb 
+dtb: %(dtb_base)s/omap3-n900.dtb
 # default rootfs: MMC
 mmcpart: /dev/mmcblk0p2
 bootargs: console=ttyO2,115200n8 debug earlyprintk rw rootwait root=/dev/mmcblk0p2 init=/bin/sh
@@ -789,7 +789,7 @@ uboot_env:
 	initrd_high=0xffffffff
 	fdt_high=0xffffffff
 	netargs="%(setip_cmd)s; %(nfsroot_cmd)s"
-		
+
 [chromebook2]
 uimage_addr: xip
 loadaddr: 0x41000000
@@ -894,11 +894,11 @@ dtb: %(dtb_base)s/mediatek/mt8173-evb.dtb
 initrd: %(initrd_arm64)s
 bootargs: console=ttyS0,921600n1
 
-[mt8135]  
-fastboot:true  
-dtb: %(dtb_base)s/mt8135-evbp1.dtb  
+[mt8135]
+fastboot:true
+dtb: %(dtb_base)s/mt8135-evbp1.dtb
 initrd: %(initrd_armel)s
-bootargs: console=ttyS0,921600n1 
+bootargs: console=ttyS0,921600n1
 
 [alpine]
 loadaddr: 0x04000000
@@ -941,12 +941,12 @@ uboot_env:
         gatewayip=192.168.0.254
 	netmask=255.255.255.0
 
-[juno-r1]  
-arch: arm64  
-image: %(basedir)s/Image  
-loadaddr: 0x80000000  
+[juno-r1]
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x80000000
 dtb: %(dtb_base)s/arm/juno-r1.dtb
-dtb_addr: 0x81f00000  
+dtb_addr: 0x81f00000
 initrd: %(initrd_arm64)s
 initrd_addr: 0x82000000
 bootargs: console=ttyAMA0,115200n8
@@ -958,8 +958,8 @@ dtb: %(dtb_base)s/vf610-colibri-eval-v3.dtb
 dtb_addr: 0x81f00000
 initrd: %(initrd_armel)s
 initrd_addr: 0x83000000
-bootargs: console=tty1 console=ttyLP0,115200n8 
-	
+bootargs: console=tty1 console=ttyLP0,115200n8
+
 [bcm72521-bcm97252sffe]
 conmux_host: fitlet
 loadaddr: 0x01000000
