@@ -1119,7 +1119,12 @@ if build_json_file:
     job = build_meta.get("job", None)
     if job:
         boot_meta["job"] = job
-
+    git_branch = build_meta.get("git_branch", None)
+    if git_branch:
+        boot_meta["git_branch"] = git_branch
+        # version was updated when git_branch rework was done
+        boot_meta["version"] = "1.1"
+        
     defconfig_full = build_meta.get("defconfig_full", None)
     if defconfig_full:
         boot_meta["defconfig_full"] = defconfig_full
