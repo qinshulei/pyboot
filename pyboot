@@ -387,6 +387,7 @@ def boot_to_uboot():
                       'Starting depthcharge on',
                       'BOLT v([\d\.]+)\s',
                       'CFE version ([\d\.]+)\s',
+                      'Please RESET the board',
                       pexpect.TIMEOUT], timeout = 45)
         if i == 0:
             breakin = True
@@ -415,6 +416,8 @@ def boot_to_uboot():
             progress("console: bootloader detected: %s" % c.match.group(0))
             bootloader_custom = True
             return False
+        elif i == 8:
+            progress("u-boot: failure to boot.", "OFFLINE")
         else:
             raise Exception('ERROR: Could not break into u-boot.', 'OFFLINE')
 
@@ -490,14 +493,14 @@ def init_net():
             c.expect(prompt)
             break;
         elif i == 1:
-            raise Exception('u-boot: does not support DHCP.  Giving up.')
+            raise Exception('u-boot: does not support DHCP.  Giving up.', "OFFLINE")
         else:
             retries = retries - 1
             if retries:
                 progress('u-boot: DHCP timeout. Trying again (retries=%d)' \
                              %retries, log=True)
             else:
-                raise Exception('u-boot: ERROR: timeout getting DHCP address.')
+                raise Exception('u-boot: ERROR: timeout getting DHCP address.', "OFFLINE")
 
     if serverip:
         command('setenv serverip %s' %serverip)
@@ -538,7 +541,7 @@ def load_image(file, addr):
         if (i == 0):
             j = c.expect([prompt, pexpect.TIMEOUT])
             if j != 0:
-                raise Exception("u-boot: ERROR: No prompt after TFTP transfer", OFFLINE)
+                raise Exception("u-boot: ERROR: No prompt after TFTP transfer", "OFFLINE")
             break
         elif (i == 1):
             raise Exception('ERROR: TFTP error.')
@@ -548,7 +551,7 @@ def load_image(file, addr):
                 tftp_cmd = "tftpboot"
                 c.expect(prompt)
             else:
-                raise Exception("ERROR: u-boot doesn't support TFTP")
+                raise Exception("ERROR: u-boot doesn't support TFTP", "OFFLINE")
         elif (i == 3):
             raise Exception("ERROR: u-boot: No network connection", "OFFLINE")
         else:
@@ -557,9 +560,9 @@ def load_image(file, addr):
                 c.send('\003')  # Ctrl-C: abort current tftp
                 j = c.expect([prompt, pexpect.TIMEOUT])
                 if j != 0:
-                    raise Exception("u-boot: ERROR: No prompt after interrupting TFTP.", OFFLINE)
+                    raise Exception("u-boot: ERROR: No prompt after interrupting TFTP.", "OFFLINE")
             else:
-                raise Exception('ERROR: Timeout loading %s.  Giving up.' %file, OFFLINE)
+                raise Exception('ERROR: Timeout loading %s.  Giving up.' %file, "OFFLINE")
 
 def boot_kernel():
     global prompt, initrd_addr
