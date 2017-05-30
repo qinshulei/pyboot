@@ -42,10 +42,10 @@ part_uuid: mmc 0:1
 partuuid_cmd: 'part uuid %(part_uuid)s uuid; setenv bootargs ${bootargs} rw root=PARTUUID=${uuid} rootwait'
 
 [4430panda]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap4-panda.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
    usbethaddr=2e:40:70:f0:12:06
@@ -55,10 +55,10 @@ uboot_env:
    netargs=%(setip_cmd)s
 
 [4460panda-es]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap4-panda-es.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 # Default u-boot doesn't support 'bootz', neet to use bootm
 uimage_addr: xip
@@ -70,18 +70,18 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [duovero]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap4-duovero-parlor.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 # Default u-boot doesn't support 'bootz', neet to use bootm
 uimage_addr: xip
 bootargs: console=ttyO2,115200n8 debug earlyprintk
 
 [arndale]
-loadaddr: 0x41000000
-dtb_addr: 0x41f00000
+loadaddr: 0x42000000
+dtb_addr: 0x42f00000
 dtb: %(dtb_base)s/exynos5250-arndale.dtb
 initrd_addr: 0x44000000
 initrd: %(initrd_armel)s
@@ -98,10 +98,10 @@ initrd: %(initrd_armel)s
 bootargs: console=ttySAC2,115200n8
 
 [3530beagle]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap3-beagle.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	preboot=usb start  # For USB net dongle
@@ -109,10 +109,10 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [3730xm]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap3-beagle-xm.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	usbethaddr=2a:45:34:6d:b4:5d
@@ -122,10 +122,10 @@ uboot_env:
 
 
 [3530overo]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap3-overo-tobi.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	ethaddr=fe:06:88:cd:08:6f
@@ -133,49 +133,49 @@ uboot_env:
 	netargs=%(setip_cmd)s
 
 [3730storm]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap3-overo-storm-tobi.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	bootargs=console=ttyO2,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [am335xbone]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/am335x-bone.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [am335xboneb]
-loadaddr: 0x81000000
+loadaddr: 0x82000000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
-dtb_addr: 0x81f00000
-initrd_addr: 0x82000000
+dtb_addr: 0x82f00000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 uboot_env:
 	bootargs=console=ttyO0,115200n8 earlyprintk
 	netargs=%(setip_cmd)s
 
 [pepper]
-loadaddr: 0x81000000
+loadaddr: 0x82000000
 dtb: %(dtb_base)s/am335x-pepper.dtb
-dtb_addr: 0x81f00000
-initrd_addr: 0x82000000
+dtb_addr: 0x82f00000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 bootargs=console=ttyO0,115200n8 earlyprintk
 
 [acme]
 conmux_host: fitlet
-loadaddr: 0x81000000
+loadaddr: 0x82000000
 dtb: %(dtb_base)s/am335x-boneblack.dtb
-dtb_addr: 0x81f00000
-#initrd_addr: 0x82000000
+dtb_addr: 0x82f00000
+#initrd_addr: 0x83000000
 #initrd: %(initrd_armel)s
 mmcpart: /dev/mmcblk0p2
 uboot_env:
@@ -236,8 +236,8 @@ uboot_env:
 	initrd_high=0xffffffff
 
 [chip]
-loadaddr: 0x41000000
-dtb_addr: 0x42000000
+loadaddr: 0x42000000
+dtb_addr: 0x42f00000
 dtb: %(dtb_base)s/sun5i-r8-chip.dtb
 initrd_addr: 0x43000000
 initrd: %(initrd_armel)s
@@ -368,11 +368,11 @@ initrd: %(initrd_armel)s
 initrd_addr: 0x03000000
 
 [beaver]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/tegra30-beaver.dtb
 initrd: %(initrd_armel)s
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 uboot_env:
 	preboot=usb start
 	bootargs=console=ttyS0,115200n8 debug earlyprintk
@@ -397,12 +397,12 @@ uboot_env:
 
 [meson8b-odroidc1]
 conmux_host: fitlet
-loadaddr: 0x21000000
+loadaddr: 0x22000000
 uimage_addr: 0x00208000
-dtb_addr: 0x21800000
+dtb_addr: 0x21f00000
 dtb: %(dtb_base)s/meson8b-odroidc1.dtb
 initrd: %(initrd_armel)s
-initrd_addr: 0x22000000
+initrd_addr: 0x23000000
 uboot_env:
 	fdt_high=0xffffffff
 	initrd_high=0xffffffff
@@ -514,6 +514,21 @@ uboot_env:
         gatewayip=192.168.0.254
         netargs=%(setip_cmd)s
 
+[meson-gxl-s905x-khadas-vim]
+conmux_host: fitlet
+arch: arm64
+image: %(basedir)s/Image
+loadaddr: 0x03000000
+# specific uImage addr needed with factory u-boot
+uimage_addr: 0x01080000
+dtb: %(dtb_base)s/amlogic/meson-gxl-s905x-khadas-vim.dtb
+dtb_addr: 0x02f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x05000000
+bootargs: console=ttyAML0,115200
+uboot_env:
+        preboot=
+	
 [meson-gxl-s905x-p212]
 conmux_host: fitlet
 arch: arm64
@@ -529,10 +544,6 @@ bootargs: console=ttyAML0,115200
 uart_fifo_hack: 4
 uboot_env:
         preboot=
-#        ipaddr=192.168.0.92
-#        netmask=255.255.255.0
-#        gatewayip=192.168.0.254
-#        netargs=%(setip_cmd)s
 
 [meson-gxbb-wetek-hub]
 conmux_host: fitlet
@@ -611,11 +622,11 @@ uboot_env:
 	bootargs=console=ttySAC2,115200n8 debug earlyprintk
 
 [odroid-xu3]
-loadaddr: 0x41000000
+loadaddr: 0x42000000
 dtb: %(dtb_base)s/exynos5422-odroidxu3.dtb
-dtb_addr: 0x41f00000
+dtb_addr: 0x42f00000
 #dtb_append: True
-initrd_addr: 0x42000000
+initrd_addr: 0x43000000
 #mmcpart=/dev/mmcblk1p2
 uboot_env:
         usbethaddr=2e:40:70:f0:12:08
@@ -625,10 +636,10 @@ uboot_env:
 	fdt_high=0xffffffff
 
 [octa]
-loadaddr: 0x21000000
+loadaddr: 0x22000000
 dtb: %(dtb_base)s/exynos5420-arndale-octa.dtb
-dtb_addr: 0x21f00000
-initrd_addr: 0x22000000
+dtb_addr: 0x22f00000
+initrd_addr: 0x23000000
 initrd: %(initrd_armel)s
 uboot_env:
 	ethaddr=6e:e6:84:36:8e:9fs
@@ -648,10 +659,10 @@ uboot_env:
 	preboot=sleep 1
 
 [omap5uevm]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/omap5-uevm.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 #initrd: %(initrd_armel)s
 part_uuid: mmc 0:2
 uboot_env:
@@ -662,10 +673,10 @@ uboot_env:
 	netargs="%(partuuid_cmd)s; %(setip_cmd)s"
 
 [am43xevm]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/am437x-gp-evm.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 initrd: %(initrd_armel)s
 bootargs: console=ttyO0,115200n8
 
@@ -778,10 +789,10 @@ bootargs: console=ttyO2,115200n8 debug earlyprintk rw rootwait root=/dev/mmcblk0
 
 
 [jetson]
-loadaddr: 0x81000000
-dtb_addr: 0x81f00000
+loadaddr: 0x82000000
+dtb_addr: 0x82f00000
 dtb: %(dtb_base)s/tegra124-jetson-tk1.dtb
-initrd_addr: 0x82000000
+initrd_addr: 0x83000000
 #initrd: %(initrd_armel)s
 mmcpart: /dev/mmcblk0p2
 uboot_env:
@@ -851,11 +862,19 @@ dtb: %(dtb_base)s/zynq-zc702.dtb
 initrd: %(initrd_armel)s
 cmdline_append: debug earlyprintk
 
-[rk3288-evb]
-fastboot: true
-fastboot_cmd: rockusb
-dtb: %(dtb_base)s/rk3288-evb-rk808.dtb
+[rk3399-firefly]
+conmux_host: fitlet
+arch: arm64
 loadaddr: 0x01000000
+dtb_addr: 0x01f00000
+initrd: %(initrd_arm64)s
+initrd_addr: 0x02000000
+bootargs: console=ttyS2,115200 debug earlyprintk
+
+[rk3288-miqi]
+conmux_host: fitlet
+loadaddr: 0x01000000
+dtb_addr: 0x01f00000
 initrd: %(initrd_armel)s
 initrd_addr: 0x02000000
 bootargs: console=ttyS2,115200 debug earlyprintk
