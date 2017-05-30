@@ -544,7 +544,7 @@ def load_image(file, addr):
                 raise Exception("u-boot: ERROR: No prompt after TFTP transfer", "OFFLINE")
             break
         elif (i == 1):
-            raise Exception('ERROR: TFTP error.')
+            raise Exception('ERROR: TFTP error.', "OFFLINE")
         elif (i == 2):
             if tftp_cmd == "tftp":
                 progress("u-boot: tftp command not present, trying tftpboot")
