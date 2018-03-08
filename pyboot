@@ -668,6 +668,7 @@ def root_shell():
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
           'Unable to handle kernel (.*)\r\n',
+          '(initramfs)'
     ]
     done = False
     timeout = 120
@@ -675,7 +676,8 @@ def root_shell():
         timeout = 500
     while not done:
         i = c.expect(pl, timeout=timeout)
-        if i == 0:
+        if i == 0 or i == 6:
+            prompt = c.match.group(0)
             done = True
         elif i == 1:
             command('\n')
