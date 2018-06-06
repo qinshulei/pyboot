@@ -668,9 +668,11 @@ def root_shell():
           "Kernel panic",
           "(Unhandled fault.*)\r\n",
           'Unable to handle kernel (.*)\r\n',
-          '(initramfs)'
+          '(initramfs)',
+          'login:',
     ]
     done = False
+    logged_in = False
     timeout = 120
     if qemu:
         timeout = 500
@@ -688,6 +690,19 @@ def root_shell():
             warnings += 1
             msg = c.match.group(0)
             progress('kernel: %s' %msg, log=True)
+        elif i == 7:
+            if logged_in:
+                continue
+            progress("login prompt found: %s" % c.match.group(0))
+            # Make sure there's not an auto-login already going on
+            j = c.expect(["automatic login",
+                          pexpect.TIMEOUT],
+                         timeout=0.5)
+            if j == 0:
+                progress("userspace: automatic login dectected")
+            else:
+                command('root\n')
+            logged_in = True;
         else:
             raise Exception('userspace: failed to find root shell: %s' %pl[i])
 
@@ -1232,7 +1247,7 @@ if dtb and dtb_append:
     kimage = kimage_appended
 
 
-if convert_uimage:
+if convert_uimage and not kimage.startswith("u"):
     kimage = create_uimage(kimage, uimage_addr)
     boot_meta["uimage"] = True
     boot_meta["uimage_addr"] = uimage_addr
